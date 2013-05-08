@@ -1,0 +1,272 @@
+--------------------------------------------------------------------------------
+Title:Writeup for Project 04 -	Distributed Systems.
+
+--------------------------------------------------------------------------------
+
+Date:  07/22/2012
+
+Group Num 23 :         Name            			Email                  		Student ID
+
+                       Sriram Ganesh	    		sriramga@usc.edu       	6175304514
+                       Sreebalaji Varadharajan		svaradha@usc.edu  		4888549097
+                       Satheeshkumar Karuppusamy	karuppus@usc.edu		7349719900
+
+
+					   
+I Requirements:
+===============
+
+Part1
+------
+
+In this part we are supposed to implement the following extensions to the Client-Server distributed scheme we have implemented in Project3
+
+1. Implementation of Distributed Supermarket:
+	- Implementation of nachos version of Distributed Supermarket using single server
+	- In this part we have to create a simple client server system for allowing user programs across multiple Nachos clients to participate in a single Supermarket Simulation
+	- We need locks, monitor variables and condition variables for our Supermarket' simulation to work properly for several clients using a single server system as a storage location  
+	
+Part 2
+------
+
+Part2 deals with the implementation of Distributed Supermarket with Distributed Servers:
+	- Implementation of nachos version of Distributed Supermarket using multiple server
+	- In this part we have to create a distributed client-server system for allowing user programs across multiple Nachos clients to participate in a single Supermarket Simulation
+	- We need locks, monitor variables and condition variables for our Supermarket' simulation to work properly for several clients spread across several servers  
+	
+
+Part 3
+-------
+
+1.  Extra Credit: "Resource Recovery Algorithm"
+	- Our algorithm Algorithm elects the new winner client for the shared resource in the distributed environment in case a client dies with that resource
+	- We need to implement this with one server and at most five clients
+	- If the client dies and has a shared resource with it then the server checks for the life of those resource owners
+	- If it finds the client dead with the allocated resource, our server pings it and makes the resource available to the next waiting client 
+	
+II Assumptions
+===============
+
+- For the memory model we have used project 2 and set the NumPhysPages to 102400.
+
+=========================================================================
+- The machine ids of the server should be from 0 to Number of servers-1(Important : should be in order)
+=========================================================================
+
+III. Design
+===========
+
+Part1, Part2 and Part3:
+
+
+	Part 1 : Distributed Supermarket implementation
+	----------------------------------------------
+	
+	- The server's job is to maintain all the information about the distributed Supermarket in its own system and service the client programs whenever it is asked to
+	- References to the resources like locks,cvs and mvs are maintained in a centrallized server system
+	- Clients who are distributed across the network will use those resources whenever necessary
+	- They will access the values of the monitor variables, locks and cvs in a distributed client environment
+	
+	Part 2 : Distributed Supermarket Implementation with Distributed Servers
+	------------------------------------------------------------------------
+	
+	- The server's job is to maintain part of the resources of the distributed Supermarket in its own system and service the client programs whenever it is asked to
+	- References to the resources like locks,cvs and mvs are maintained across distibuted server system 
+	- Clients who are distributed across the network will use those resources whenever necessary.
+	- They will access the values of the monitor variables, locks and cvs in a distributed client -server environment
+	
+	Part 3 : Extra Credit(Resource Recovery algorithm)
+	---------------------
+	
+	- Recovers the resource that is left with the dead client entity
+	- Recovers the resource that is left with them and allocates it to the waiting client thread
+	- Each server system pings the owner of all the resources periodically, recovers the resource and allocates to the waiting client 
+	
+	
+IV .Implementation:
+===================
+
+ + Files Modified
+
+		-server.cc in network directory
+		-server.h in network directory
+		-exception.cc in userprog directory
+		-addrspace.cc in userprog directory
+		-addrspace.h in userprog directory
+		-progtest.cc in userprog directory
+		-machine.h in machine directory
+		-main.cc in threads directory
+		-system.h in threads directory
+		-system.cc in threads directory
+		-syscall.h in userprog and test directory
+		-start.s in test directory and threads directory
+		-Makefile.common in code directory
+		-setup.h in threads directory
+		
+	Files added:
+		- ../test/cashier.c
+		- ../test/customer.c
+		- ../test/manager.c
+		- ../test/salesman.c
+		- ../test/goodsloader.c
+		- ../test/cashier_exec.c
+		- ../test/customer_exec.c
+		- ../test/manager_exec.c
+		- ../test/goodsloader_exec.c
+		- ../test/salesman_exec.c
+		- ../test/input.c
+		
+ + Functions added 
+
+		- in server.cc
+			
+			1. void clientToServer();
+			2. void serverToServer(clientPacket packetReceived,int serverID);
+			3. void switchCase(int syscall,char name[],int index1,int index2,int machineID,int mailBoxID,int value);
+			4. int searchMyOwn(int syscall,char name[],int index);
+			5. void EndSimulation();
+			
+ + Files added 
+	- In test directory
+	
+	- In network directory
+		-server.cc in network directory	
+		-server.h in network directory		
+		
+ + Data Structures added, and the file they were added to.
+ 
+	Structures:
+	
+	Part 1 and 2:	
+	-------------
+	
+	In server.h,
+	
+	struct queueStruct{
+	int doYouHave[5];
+	int doYouHaveReply[5];
+	int syscall;
+	int count;
+	int value;
+	int clientCount;
+	int noOfReplies;
+	int flag;
+	
+	char name[10];
+	
+	bool received;
+	 
+	List *requestWaitQueue;
+	List *serverQueue;	
+	List *clientQueue;
+	
+	queueStruct(){
+		syscall=-1;
+		value = -1;
+		count = 0;
+		name[0]='\0';
+		received = false;
+		clientCount = 0;
+		requestWaitQueue = NULL;
+		doYouHave[myMachineID] = 0;
+		doYouHaveReply[myMachineID] = 1;
+		noOfReplies = 0;
+		flag = 0;
+		//requestWaitQueue = new List;
+		}	
+	};
+	
+ + Data Structures modified, and the file they were added to
+	
+V. Testing
+===========
+
+We have designed a series of test suites to test our code. The test primarily check whether 
+- Sharing of the resources across client server system works fine with the supermarket simulation across single server based distributed system
+- Sharing of the resources across client server system works fine with the supermarket simulation across multiple server based distributed system
+- Creating the resources across the servers works fine without any duplications or race conditions 
+- Resource recovery when any client dies
+
+
+TO TEST PART 1 AND 2:
+=====================
+>>PART 1 : Distributed Supermarket implementation
+
+The tests for part 1,2 & 3 of the assignment can be run from the ../code/network directory
+
+
+	Part 1 : SINGLE SERVER ENTIRE SIMULATION(Run everything from ../code/network directory) 
+	========================================
+	-nos is used to indicate the number of servers
+	-m is used to denote the machine id of the server
+	
+	1. Run the server :
+		Terminal#1 : nachos -server -m 0 -nos 1
+
+	2. Run the initiator program : 
+	
+	3. Run the user programs(entities of super market):
+	
+	
+	Part 2 : MULTIPLE SERVERS ENTIRE SIMULATION(Run everything from ../code/network directory) 
+	===========================================
+
+	=========================================================================================
+	 Decide the number of servers and run the servers by opening individual nachos instance.
+		The machine ids of the servers should be from (0 to numberofservers-1)
+	
+		nachos -server -m #machineid -nos #noofservers
+		
+		#machineid should be sequential for servers starting from 0 to numberofservers-1
+		#noofservers should be an integer representing the number of servers we use
+		
+	=========================================================================================
+	
+	1. Run the servers(Example for three servers) : 
+		Terminal#1 : nachos -server -m 0 -nos 3
+		Terminal#2 : nachos -server -m 1 -nos 3
+		Terminal#3 : nachos -server -m 2 -nos 3
+		
+	2. Run the initiator program : 
+	
+		Teminal#4 : nachos -x ../test/input -m #machineid -nos #noofservers
+		
+		Wait till it terminate. And then start user programs in new terminals.
+		
+	3. Wait for the termination of the initiator program. Then, Run the user programs : Supermarket Entities
+		
+		Terminal#5 : nachos -x ../test/cashier_exec -m #machineid -nos #noofservers
+		Terminal#6 : nachos -x ../test/customer_exec -m #machineid -nos #noofservers
+		Terminal#7 : nachos -x ../test/manager_exec -m #machineid -nos #noofservers
+		Terminal#8 : nachos -x ../test/salesman_exec -m #machineid -nos #noofservers
+		Terminal#9 : nachos -x ../test/goodsloader_exec -m #machineid -nos #noofservers
+		
+	TEST CASE FOR CREATING RESOURCES IN MULTIPLE SERVERS (Run everything from ../code/network directory) 
+	======================================================
+	
+	We have created 10 different locks in a file and execed it for 5 times. At the end we get a0 lockids despite the number of requests for it.
+	
+	1. Run n number of servers with the following command in individual command lines
+		
+		Terminal#1 : nachos -server -m 0 -nos 2
+		Terminal#2 : nachos -server -m 1 -nos 2
+				
+	2. Run the following user program with 
+	
+		Terminal#3 : nachos -x ../test/exec -m 2 -nos 2
+		
+		
+	Part 3 : Extra Credit: "Resource Recovery Algorithm" (Run everything from ../code/network directory) 
+	====================================================
+	
+	1. Run the servers(Example for three servers) : 
+	
+		Terminal#1 : nachos -server -m 0 -nos 1 -ec 1
+		
+	2. Run the following user programs in individual instances 
+		
+		Terminal#5 : nachos -x ../test/acquirelock -m 1 -nos 1 -ec 1
+		Terminal#6 : nachos -x ../test/acquirelock -m 2 -nos 1 -ec 1
+		Terminal#7 : nachos -x ../test/acquirelock -m 3 -nos 1 -ec 1
+	
+

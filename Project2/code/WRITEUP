@@ -1,0 +1,1592 @@
+--------------------------------------------------------------------------------
+Title:Writeup for Project 02 - MultiProgramming and System Calls and Super market Simulation as a user program.
+
+--------------------------------------------------------------------------------
+
+Date:  06/20/2012
+
+Group Num 23 :         Name            			Email                  		Student ID
+
+                       Sriram Ganesh	    		sriramga@usc.edu       	6175304514
+                       Sribalaji Varadharajan		svaradha@usc.edu  		4888549097
+                       Satheeshkumar Karuppusamy	karuppus@usc.edu		7349719900
+
+
+					   
+I Requirements:
+===============
+
+Part1
+------
+
+In this part we are supposed to implement the following system calls: CreateLock, AcquireLock, ReleaseLock, DestroyLock, CreateCV,BroadcastCV, SignalCV, WaitCV, DestroyCV, Yield.
+ 
+1. CreateLock system call should take no argument but should return an integer value. 
+2. AcquireLock and ReleaseLock system calls use the integer value created by the CreateLock Systemcall as the lock number.
+3. DestroyLock gets the locknumber as input and sets the status of the lock to be deleted if someone uses it or deletes it if no one uses it.
+4. CreateCV system call should take no argument but should return a integer value. 
+5. SignalCV,BroadcastCV and WaitCV uses the integer calue retuned by the CreateCV along with the value returned by CreateLock system call.
+6. DestroyCV pass the value returned by createLock and createCV to destroy Locks and CV corresponding to the number.
+4. The Yield system call should cause the current thread to yield the CPU to another thread.
+5. The Exit system call should do any of the three following actions depending upon the context
+	i)   if it is the last thread of the process,we must delete the address space allocated to the process.
+	ii)  if it is not the last thread in the process, then delete the the stack allocated to the thread and also delete the corresponding entry in the page table.
+	iii) if it is the last thread in the system, then execute the halt command to halt the entire nachos system.
+
+	
+Part 2
+------
+In this part we have to implement Fork and Exec system calls to allow MultiProgramming capability in nachos.
+
+Actually nachos creates only one thread in a process and then copies the code and init data, segment wise into the memory. It then allocates 8 pages of stack to that specific thread.
+
+We are now supposed to create multiple threads and allocate 8 pages of stack to each of the threads created. And then we have to copy code and init data the available physical memory, which can be done using Bitmap->Find().
+
+1. When the Fork system call is called, the system swithces to kernel mode and creates a kernel thread and allocates it to the current process address space and allocates 8 pages of stack to the new kernel thread. It then updates the process table and switches back to user mode.
+
+2. When the Exec system call is called, the system will initially increment the processcount. It then creates addresspace, which has the size of the input. It then creates a new thread, allocates addrspace to it and finally process table is updated. The last step is forking the kernel function.
+
+
+Part 3
+-------
+
+In this part it is required to use the system call implemeted in the first two parts to run a multithreaded nachos user program. 
+
+-In this part , we create multiple instances of supermarket simulation user program using the system calls that we did in the part 1 and 2.
+
+II Assumptions
+===============
+
+1) The maximum number of Locks and Condition Variables allowed are 1000 each.
+
+2) The maximum character array size for lock and condition variable is 50.
+
+3) The maximum number of physical pages is the 32,000. The size of physical pages is large enough to hold all the information for the threads,
+   processes,locks,cvs and other data structures that will be created when multiple instances of the super market simulation is running.
+
+4) Locks and Condition Variables are not shared between processes.
+
+5) Maximum number of threads allowed are 1000 and the maximum number of processes allowed are 10.
+
+6) Each page is of size 128 bytes.
+
+7) For the Print system call the maximum number of characters allowed are 200.
+
+III. Design
+===========
+
+Part1 :
+
+Exception.cc:
+
+All the system calls are implemented in the exception.cc file of the userprog directory. Whenever a user program executes 
+a system call, a call is made to the nachos kernel in the file excetion.cc to the function ExceptionHandler, and there is 
+a switch from user mode to kernel mode. All the stubs are defined in start.ds file under test directory. The start.s file
+contains the assembler code. These stubs then copy the the number of the system call to Register R2. The system call numbers 
+are defined under macros in the syscall.h file  in the userprog directory.
+
+To brief our system call design,
+If a user program generates a syscall, then the exception handler function is called. This function will then read register 
+2 using the stubs in start.s. It will the use the number to compare it to a switch case to determine which syscall was called 
+for and then call the appropriate function.
+
+Process Table
+--------------
+
+A process table is created to keep track of the number of threads and the address space of the processes. A process table 
+entry is created for each of the processes running in the system. We have implemented the process table as strcuture with 
+data as given in the psuedo code below.
+
+typedef struct processTableStruct
+{
+	int processID;			// Id referring to each process uniquely
+	int threadCount;		//number of threads in a process
+	AddrSpace *addrSpace;
+};
+
+extern Lock *ProcessTableLock;
+extern struct processTableStruct processTable[MAX_PROCESS];
+extern int nextProcessID;
+extern int processCount;
+
+
+To run a user program which can inturn create multiple processes of its own, we have extended the implementation 
+of StartProcess() function in progtest.cc
+
+void
+StartProcess(char *filename)
+{
+    OpenFile *executable = fileSystem->Open(filename);
+    AddrSpace *space;
+
+    if (executable == NULL) {
+	printf("Unable to open file %s\n", filename);
+	return;
+    }
+   
+    space = new AddrSpace(executable);
+
+    currentThread->space = space;
+	currentThread->threadID=0;
+	int spaceID = nextProcessID++;
+	processTable[spaceID].processID=spaceID;
+	processTable[spaceID].threadCount++;
+	processTable[spaceID].addrSpace= space;
+	currentThread->myProcessID=spaceID;
+	processCount++;
+
+    delete executable;			// close file
+
+    space->InitRegisters();		// set the initial register values
+    space->RestoreState();		// load page table register
+
+    machine->Run();			// jump to the user progam
+    ASSERT(FALSE);			// machine->Run never returns;
+					// the address space exits
+					// by doing the syscall "exit"
+}
+
+Below are the other datastructures which we have defined for Lock and CV implementation:
+
+Lock:
+-----
+//Lock table declaration
+typedef struct LockTypeStruct{
+	Lock *lock;
+	AddrSpace *addrSpace;
+	bool isToBeDeleted;
+	bool isDeleted;
+	int count;
+};
+
+
+CV:
+---
+
+//Condition Variable table declaration
+typedef struct CVTypeStruct{
+	Condition *cv;
+	AddrSpace *addrSpace;
+	bool isToBeDeleted;
+	bool isDeleted;
+	int count;		
+};
+
+extern struct LockTypeStruct UserLock[MAX_LOCK];
+extern struct CVTypeStruct UserCV[MAX_CV];
+
+extern Lock *KernelLock;
+extern Lock *CVLock;
+extern Lock *PageTableLock;
+
+extern int nextLockIndex;
+extern int nextCVIndex;
+
+PageTable DataStructure:
+------------------------
+
+class TranslationEntry {
+  public:
+    int virtualPage;  	// The page number in virtual memory.
+    int physicalPage;  	// The page number in real memory (relative to the
+			//  start of "mainMemory"
+    bool valid;         // If this bit is set, the translation is ignored.
+			// (In other words, the entry hasn't been initialized.)
+    bool readOnly;	// If this bit is set, the user program is not allowed
+			// to modify the contents of the page.
+    bool use;           // This bit is set by the hardware every time the
+			// page is referenced or modified.
+    bool dirty;         // This bit is set by the hardware every time the
+			// page is modified.
+};
+
+ 
+
+Description of System Calls:
+---------------------------
+
+CreateLock System Call:
+----------------------------
+CreateLock System call will return an integer value.This value is an index position into a kernel structure array of actual Lock objects.
+We are giving a character array parameter to give Lock a name. The maximum limit for position of next Lock Index,length of the input character 
+and whether the Thread belongs to the same process is checked.If the input parameter exceeds the limitation then an error message is printed and thread will return.
+
+
+AcquireLock_Syscall System Call:
+-----------------------------
+When the userprogram throws an exception as AcquireLock then the index which is given as argument is checked against limitations like whether it is having valid 
+index,has it been destroyed and also whether it belongs to same process.If it clears all those cases then a lock is acquired.
+
+
+ReleaseLock_Syscall System Call:
+----------------------
+When ReleaseLock is called, the index which is given as argument is checked against limitations like whether it is a valid lock,has it been destroyed and also wether it belongs to same
+process or not.If it clears all those cases then a lock is Released.If the Destroy lock declares it is ready to destroy, then ReleseLock calls the Destroy system call.
+
+
+DestroyLock_Syscall System Call:
+----------------------
+This system call takes an integer parameter which is identifier for the Lock kernel object intended to be deleted. It checks out the parameters like nextLockIndex,whether the Lock is
+already destroyed and the process as well.It also checks whether Lock got released or not.If its released. it will be destroyed, othrwise it will declare that its ready to be destroyed,
+and thread that is giving the release will call the DestroyLock.
+
+
+CreateCV_Syscall System Call:
+----------------------
+We give a character array parameter to give Condition Variable a name.When calling CreateCV , We are  returning an integer value. This value is an index position into a kernel structure
+array of actual Condition objects.The Limation like position of next CV Index,length of the input character and whether the Thread belongs to the same process or not is checked out.If the
+input parameter exceeds the limitation then an error message is printed and thread will return.
+
+
+DestroyCV_Syscall System Call:
+----------------------
+It takes a single integer parameter - the identifier for the Condition kernel object that is to be deleted.It checks out the boundaries like nextCVIndex,whether the Condition variable is
+destroyed previously and also its process.Then it will check whether CV got signaled or Broadcasted.If its got signalled already then it will be destroyed else it will declare that its
+ready to be destroyed, and thread that is giving the signal or broadcast will call the DestroyLock.
+
+
+WaitCV_Syscall System Call:
+-------------------
+It takes two integer parameter - first input argument is index of Lock on which the Condition Variable is waiting and the second argument is index of condition variable.These both index
+values are checked for valid index values,have those been destroyed already and also their process.If it clears all these limitation then the thread will call this kernel wait.
+
+
+SignalCV_Syscall System Call:
+---------------------
+It takes two integer parameter - first input argument is index of Lock on which the Condition Variable is waiting and the second argument is index of condition variable.These both index
+values are checked for valid index values,have those been destroyed already and also their process.If it clears all these limitation then the thread will signal the thread which is waiting
+on that condition variable and that lock.
+
+
+BroadcastCV_Syscall System Call:
+------------------------
+It takes two integer parameter - first input argument is index of Lock on which the Condition Variable is waiting and the second argument is index of condition variable.These both index
+values are checked for valid index values,have those been destroyed already and also their process.If it clears all these limitation then the thread will Broadcast all the thread waiting
+on that condition variable and that lock.
+
+
+Print_Syscall,Print1_Syscall,Print2_Syscall,Print3_Syscall,PrintTest_Syscall System Calls:
+--------------------------------------------------
+Print system calls gets the arguments from the user program,copies them into registers and prints them to the console using printf kernel function.
+
+Scan System Call:
+------------------
+Scan system call is used to get user input in the user programs using the scanf kernel function.
+
+
+RandomSearch System Call:
+------------------
+RandomSearch system call generates a random value and returns to the user program.
+
+
+Yield_sys System call:
+---------------------
+This system call is implemented by calling currentThread->Yield(). Yields the CPU time to other threads waiting in CPU ready queue.
+
+
+Exitsys System Call:
+---------------------
+User program must call Exit system call	at the end of every thread function. 
+1.If it is the last thread in nachos, we are calling interrupt->Halt().
+2.If it is the last thread in the process, we are deallocating 8 pages of stack for this thread,destroy all the locks and condition variables 
+  created in the process by calling Clear() function of Bitmap for the created lock and condition variable indexes.We must also delete the address space 
+  allocated to the process and then finally call currentThread->Finish(). 
+3.If there are some other threads in the process,we must just deallocate 8 pages of stack for	this thread from the physical memory and then call currentThread->Finish().
+  When all threads in a process and all processes	exit normally, we print	a message to the user program "All processes finished execution, hence halting nachos" to differentiate	with the
+  case where nachos is terminated abnormally in which case we do not see this message.
+
+Our implementation for the above system calls
+----------------------------------------
+
+CreateLock_SysCall
+------------------
+
+// Create Lock System Call
+
+int CreateLock_Syscall(int vaddr, int len) 
+{
+	int lockID;
+	KernelLock->Acquire();
+	if (len < 0 || len > MAX_CHAR)
+	{
+		printf("\nCREATELOCK : INVALID LOCK LENGTH");		
+		KernelLock->Release();
+		interrupt->Halt();
+		return -1;
+	}
+
+	if(nextLockIndex >= MAX_LOCK) 
+	{
+		printf("\nCREATELOCK : LOCK LIMIT REACHED. NO MORE LOCKS FOR YOU");
+		KernelLock->Release();
+		interrupt->Halt(); 
+		return -1;
+	}
+
+	char *buf;
+	buf=new char[len+1];
+	buf[len]='\0';
+	copyin(vaddr,len,buf);
+
+	UserLock[nextLockIndex].lock = new Lock(buf);
+	UserLock[nextLockIndex].addrSpace = currentThread->space;
+	UserLock[nextLockIndex].isToBeDeleted = false;
+	UserLock[nextLockIndex].isDeleted = false;
+	UserLock[nextLockIndex].count = 0;
+	lockID = nextLockIndex++;
+	printf("\nCREATELOCK : LOCK %d CREATED",lockID);
+	KernelLock->Release();
+	return lockID;
+}
+
+AcquireLock_Syscall
+-------------------
+
+// Lock: Acquire Lock System Call
+
+void AcquireLock_Syscall(int lockID) 
+{
+	
+	KernelLock->Acquire();
+	if(lockID >= nextLockIndex || lockID < 0) 
+	{
+		printf("\nLOCK ACQUIRE : INVALID LOCK NUMBER");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(currentThread->space != UserLock[lockID].addrSpace) 
+	{
+		printf("\nLOCK ACQUIRE: THREAD %d FROM PROCESS %d DO NOT HAVE ACCESS TO THIS ADDRESS SPACE",currentThread->threadID,currentThread->myProcessID);
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(UserLock[lockID].isDeleted || UserLock[lockID].isToBeDeleted) 
+	{
+		printf("\nLOCK AQCUIRE : THE LOCK YOU ARE TRYING TO ACQUIRE IS NO LONGER ALIVE");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+		
+	UserLock[lockID].count++;
+	KernelLock->Release();
+	UserLock[lockID].lock->Acquire();
+	printf("\nLOCK ACQUIRE : THREAD %d FROM PROCESS %d ACQUIRED LOCK %d",currentThread->threadID,currentThread->myProcessID,lockID);
+}
+
+ReleaseLock_Syscall
+-------------------
+
+// Lock: Release Lock System Call
+
+void ReleaseLock_Syscall(int lockID) 
+{
+	KernelLock->Acquire();
+	if(lockID >= nextLockIndex || lockID < 0) 
+	{
+		printf("\nLOCK RELEASE : INVALID LOCK NUMBER");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(currentThread->space != UserLock[lockID].addrSpace) 
+	{
+		printf("\nLOCK RELEASE : THREAD %d FROM PROCESS %d YOU DO NOT HAVE ACCESS TO THIS ADDRESS SPACE",currentThread->threadID,currentThread->myProcessID);
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(UserLock[lockID].isDeleted) 
+	{
+		printf("\nLOCK RELEASE : THE LOCK YOU ARE TRYING TO RELEASE IS NO LONGER ALIVE");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	
+	UserLock[lockID].lock->Release();
+	UserLock[lockID].count--;
+	if(UserLock[lockID].isToBeDeleted && UserLock[lockID].count == 0) 
+	{
+		UserLock[lockID].isDeleted = true;
+		delete UserLock[lockID].lock;
+	}
+	printf("\nLOCK RELEASE : THREAD %d FROM PROCESS %d RELEASED LOCK %d",currentThread->threadID,currentThread->myProcessID,lockID);
+	KernelLock->Release();
+}
+
+DestroyLock_Syscall
+-------------------
+
+// Destroy Lock System Call
+
+void DestroyLock_Syscall(int lockID) 
+{
+	KernelLock->Acquire();
+	if(lockID > nextLockIndex || lockID < 0) 
+	{
+		printf("\nLOCK DESTROY : INVALID LOCK NUMBER");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(currentThread->space != UserLock[lockID].addrSpace) 
+	{
+		printf("\nLOCK DESTROY : THREAD %d FROM PROCESS %d YOU DO NOT HAVE ACCESS TO THIS ADDRESS SPACE",currentThread->threadID,currentThread->myProcessID);
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(UserLock[lockID].isDeleted) {
+		printf("\nLOCK DESTROY : THE LOCK YOU ARE TRYING TO DESTROY IS NO LONGER ALIVE");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	
+	UserLock[lockID].isToBeDeleted = true;
+	
+	if(UserLock[lockID].count == 0) 
+	{
+		UserLock[lockID].isDeleted = true;
+		delete UserLock[lockID].lock;
+	}
+	printf("\nLOCK DESTROY : LOCK %d DESTROYED",lockID);
+	KernelLock->Release();
+}
+
+
+CreateCV_Syscall
+----------------
+
+// CreateCV System Call
+
+int CreateCV_Syscall(int vaddr, int len) 
+{
+	int cvID;
+	
+	KernelLock->Acquire();
+
+	if (len < 0 || len > MAX_CHAR)
+	{
+		printf("\nCREATECV : INVLAID CV LENGTH");
+		KernelLock->Release();
+		interrupt->Halt();
+		return -1;
+	}
+
+			
+	if(nextCVIndex >= MAX_CV) 
+	{
+		printf("\nCREATECV : LOCK LIMIT REACHED. NO MORE LOCKS FOR YOU");
+		KernelLock->Release();
+		interrupt->Halt(); 
+		return -1;
+	}
+
+	char *buf;
+	buf=new char[len+1];
+	buf[len]='\0';
+	copyin(vaddr,len,buf);
+
+	UserCV[nextCVIndex].cv = new Condition(buf);
+	UserCV[nextCVIndex].addrSpace = currentThread->space;
+	UserCV[nextCVIndex].isToBeDeleted = false;
+	UserCV[nextCVIndex].isDeleted = false;
+	UserCV[nextCVIndex].count = 0;
+
+	cvID = nextCVIndex++;
+	printf("\nCREATECV : CV %d CREATED",cvID);
+	KernelLock->Release();
+	return cvID;
+}
+
+SignalCV_Syscall
+--------------
+
+//Signal System Call
+
+void SignalCV_Syscall(int lockID, int cvID) {
+
+	KernelLock->Acquire();
+
+	if(lockID >= nextLockIndex || lockID < 0) {
+		printf("\nCREATELOCK : INVALID LOCK NUMBER");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(cvID >= nextCVIndex || cvID < 0) {
+		printf("\nSIGNALCV : INVALID CONDITION VARIABLE NUMBER");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(currentThread->space != UserLock[lockID].addrSpace) {
+		printf("\nSIGNALCV : LOCK YOU ARE TRYING TO USE DOESNT HAVE ACCESS TO THIS ADDRESS SPACE");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(currentThread->space != UserCV[cvID].addrSpace) {
+		printf("\nSIGNALCV : THE CONDITION VARIABLE YOU ARE TRYING TO USE DOESNT HAVE ACCESS TO THIS ADDRESS SPACE");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(UserCV[cvID].isDeleted) {
+		printf("\nSIGNALCV : YOU ARE TRYING TO SIGNAL TO A CONDITION VARIABLE THAT IS NO LONGER ALIVE");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(UserLock[lockID].isDeleted || UserLock[lockID].isToBeDeleted) {
+		printf("\nSIGNALCV : YOU ARE TRYING TO USE A LOCK THAT IS NO LONGER ALIVE");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+
+	UserCV[cvID].cv->Signal(UserLock[lockID].lock);
+		printf("\nSIGNALCV:THREAD %d SIGNALLED CV %d",currentThread->threadID,cvID);
+	UserCV[cvID].count--;
+
+	// If isToBeDeleted Flag is set and if no one is waiting on the lock, then delete the CV
+	
+	if(UserCV[cvID].isToBeDeleted && UserCV[cvID].count == 0) {
+		printf("\nSIGNALCV : CV %d IS DELETED", cvID);
+		UserCV[cvID].isDeleted = true;
+		delete UserCV[cvID].cv;
+	}
+	KernelLock->Release();
+}
+
+
+WaitCV_syscall
+------------
+
+// Condition Variable: Wait System Call
+
+void WaitCV_Syscall(int lockID, int cvID) 
+{
+	KernelLock->Acquire();
+	// Checking all the possible conditions
+	if(lockID >= nextLockIndex || lockID < 0) 
+	{
+		printf("\nWAITCV : INVALID LOCK NUMBER");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(cvID >= nextCVIndex || cvID < 0) 
+	{
+		printf("\nWAITCV : INVALID CONDITION VARIABLE NUMBER");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(currentThread->space != UserLock[lockID].addrSpace) 
+	{
+		printf("\nWAITCV : LOCK YOU ARE TRYING TO USE DOESNT HAVE ACCESS TO THIS ADDRESS SPACE");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(currentThread->space != UserCV[cvID].addrSpace) 
+	{
+		printf("\nWAITCV : CV YOU ARE TRYING TO USE DOESNT HAVE ACCESS TO THIS ADDRESS SPACE");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(UserCV[cvID].isDeleted || UserCV[cvID].isToBeDeleted) 
+	{
+		printf("\nWAITCV : YOU ARE TRYING TO WAIT TO A CONDITION VARIABLE THAT IS NO LONGER ALIVE");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(UserLock[lockID].isDeleted || UserLock[lockID].isToBeDeleted) 
+	{
+		printf("\nWAITCV : YOU ARE TRYING TO USE A LOCK THAT IS NO LONGER ALIVE");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	UserCV[cvID].count++;
+	KernelLock->Release();
+		printf("\nWAITCV: THREAD %d WAITING IN CV %d ",currentThread->threadID,cvID);
+	UserCV[cvID].cv->Wait(UserLock[lockID].lock);
+}
+
+
+BroadcastCV_syscall
+-------------------
+
+// Condition Variable: Broadcast System Call
+
+void BroadcastCV_Syscall(int lockID, int cvID)
+ {
+	KernelLock->Acquire();
+	// Checking all the possible conditions
+	if(lockID >= nextLockIndex || lockID < 0) 
+	{
+		printf("\nBROADCASTCV : INVALID LOCK NUMBER");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(cvID >= nextCVIndex || cvID < 0) 
+	{
+		printf("\nBROADCASTCV : INVALID CONDITION VARIABLE NUMBER");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(currentThread->space != UserLock[lockID].addrSpace) 
+	{
+		printf("\nBROADCASTCV : THE LOCK YOU ARE TRYING TO USE DOESNT HAVE ACCESS TO THIS ADDRESS SPACE");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(currentThread->space != UserCV[cvID].addrSpace) 
+	{
+		printf("\nBROADCASTCV : CV YOU ARE TRYING TO USE DOESNT HAVE ACCESS TO THIS ADDRESS SPACE");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(UserCV[cvID].isDeleted || UserCV[cvID].isToBeDeleted) 
+	{
+		printf("\nBROADCASTCV : YOU ARE TRYING TO SIGNAL TO A CV THAT IS NO LONGER ALIVE");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(UserLock[lockID].isDeleted) 
+	{
+		printf("\nBROADCASTCV : YOU ARE TRYING TO USE A LOCK THAT IS NO LONGER ALIVE");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+
+	UserCV[cvID].cv->Broadcast(UserLock[lockID].lock);
+	printf("\nBROADCASTCV: THREAD %d BROADCASTED  CV %d ",currentThread->threadID,cvID);
+	UserCV[cvID].count = 0;
+	
+	if(UserCV[cvID].isToBeDeleted) {
+		printf("\nBROADCASTCV : CV %d IS DELETED", cvID);
+		UserCV[cvID].isDeleted = true;
+		delete UserCV[cvID].cv;
+	}
+	KernelLock->Release();
+}
+
+
+DestroyCV_Syscall
+-----------------
+
+//DestroyCV System Call
+
+void DestroyCV_Syscall(int cvID) 
+{
+	
+	KernelLock->Acquire();	
+	if(cvID >= nextCVIndex || cvID < 0) 
+	{
+		printf("\nDESTROYCV : INVALID CONDITION VARIABLE NUMBER");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(currentThread->space != UserCV[cvID].addrSpace)
+	{
+		printf("\nDESTROYCV : THE CV YOU ARE TRYING TO USE DOESNT HAVE ACCESS TO THIS ADDRESS SPACE");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+	if(UserCV[cvID].isDeleted || UserCV[cvID].isToBeDeleted) 
+	{
+		printf("\nDESTROYCV : YOU ARE TRYING TO SIGNAL TO A CV THAT IS NO LONGER ALIVE");
+		KernelLock->Release();
+		interrupt->Halt();
+		return;
+	}
+
+	UserCV[cvID].isToBeDeleted = true;
+	if(UserCV[cvID].count == 0) 
+	{
+		printf("\nDESTROYCV : CV %d IS DESTROYED",cvID);
+		UserCV[cvID].isDeleted = true;
+		delete UserCV[cvID].cv;
+	}
+	KernelLock->Release();
+}  
+
+
+Exit_Syscall
+-------------
+
+void Exit_Syscall(int vaddr)
+{
+	
+	if(vaddr == 0)
+	{
+		int s=currentThread->myProcessID;
+	
+		//Deallocate the stack for this thread.
+		PageTableLock->Acquire();
+			currentThread->space->clearMemory();
+		PageTableLock->Release();
+		
+		ProcessTableLock->Acquire();
+		processTable[s].threadCount--;
+		
+		//Check if all the threads in the Process are finished.
+		if(processTable[s].threadCount == 0)
+		{
+			delete processTable[s].addrSpace;
+			processTable[s].processID=-1;
+			processTable[s].addrSpace= NULL;
+			
+			processCount--;
+		}
+		
+		//Check if all the Processes are finished.
+		if(processCount==0)
+		{
+			interrupt->Halt();
+		}
+		
+		ProcessTableLock->Release();
+	
+		currentThread->Finish();
+	}
+	else
+	{
+		currentThread->Finish();
+	}
+	
+}
+
+
+Print_Syscall
+-------------
+
+//Print Syscall - With no arguments
+
+
+void Print_Syscall(int vaddr)
+{	
+	char *buf;
+	buf=new char[MAX_LENGTH];
+	buf[MAX_LENGTH]='\0';
+	copyin(vaddr,MAX_LENGTH,buf);
+	printf("\nSimulation%d : %s",currentThread->myProcessID, buf);
+
+}
+
+Print1_Syscall
+--------------
+
+//Print Syscall - With one argument
+
+void Print1_Syscall(int vaddr, int arg1)
+{	
+	char *buf;
+	buf=new char[MAX_LENGTH];
+	buf[MAX_LENGTH]='\0';
+	copyin(vaddr,MAX_LENGTH,buf);
+	printf("\nSimulation%d : ",currentThread->myProcessID);
+	printf(buf,arg1);
+
+}
+
+Print2_Syscall
+--------------
+
+//Print Syscall - With two arguments
+
+void Print2_Syscall(int vaddr, int arg1 ,int arg2)
+{
+	char *buf;
+	buf=new char[MAX_LENGTH];
+	buf[MAX_LENGTH]='\0';
+	copyin(vaddr,MAX_LENGTH,buf);
+	printf("\nSimulation%d : ",currentThread->myProcessID);
+	printf(buf,arg1,arg2);
+
+}
+
+Print3_Syscall
+--------------
+
+//Print Syscall - With three arguments
+
+void Print3_Syscall(int vaddr, int arg1 ,int arg2, int arg3)
+{
+	
+	char *buf;
+	buf=new char[MAX_LENGTH];
+	buf[MAX_LENGTH]='\0';
+	copyin(vaddr,MAX_LENGTH,buf);
+	printf("\nSimulation%d : ",currentThread->myProcessID);
+	printf(buf,arg1,arg2,arg3);
+
+}
+
+PrintTest_Syscall
+-----------------
+
+//Print Syscall for testcases
+
+void PrintTest_Syscall(int vaddr)
+{
+	
+	char *buf;
+	buf=new char[MAX_LENGTH];
+	buf[MAX_LENGTH]='\0';
+	copyin(vaddr,MAX_LENGTH,buf);
+	printf("%s",buf);
+
+}
+
+scan
+-----
+
+//gets the input from the user for the user program
+
+int scan() {
+	int x;
+	scanf("%d",&x);
+	return x;
+}
+
+RandomSearch
+------------
+
+//generates the random number for the user program request
+
+int RandomSearch() {
+	return rand();
+}
+
+Yield_Syscall
+-------------
+
+void Yield_Syscall() 
+{
+	currentThread->Yield();
+}
+
+
+Part 2 and Part3
+----------------
+
+For this part of the project we have considered the physical memory to have 32,000 physical pages of 128 bytes each. We have assumned this as sufficient to hold all the thread stacks 
+needed for multiprogramming which includes running multiple instances of the super market simulation. 
+		
+The contents from the executable are copied to the memory one page at a time rather than segment wise, as was done earlier. This is achieved using executable -> ReadAt() function
+in addrspace.cc. Also when a fork system call is executed 8 pages are allocated to the thread for its stack.
+
+A structure processTableStruct has been defined which is used to keep track of number of threads in the process, process ID, executable file ,address pointers etc. Addrspace constructor \
+is called each time to allocate space for the code,data for every new process and stack to the main thread of the process.
+
+Bitmap::Find() function is called everytime to find the next available free physical page.
+
+AddrSpace() Constructor:
+----------------------
+
+AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
+    NoffHeader noffH;
+    unsigned int i, size;
+	
+    // Don't allocate the input or output to disk files
+    fileTable.Put(0);
+    fileTable.Put(0);
+
+    executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
+    if ((noffH.noffMagic != NOFFMAGIC) && 
+		(WordToHost(noffH.noffMagic) == NOFFMAGIC))
+    	SwapHeader(&noffH);
+    ASSERT(noffH.noffMagic == NOFFMAGIC);
+
+    size = noffH.code.size + noffH.initData.size + noffH.uninitData.size ;
+    numPages = divRoundUp(size, PageSize) + divRoundUp(UserStackSize,PageSize);
+                                                // we need to increase the size
+						// to leave room for the stack
+    size = numPages * PageSize;
+
+    ASSERT(numPages <= NumPhysPages);		// check we're not trying
+						// to run anything too big --
+						// at least until we have
+						// virtual memory
+
+    DEBUG('a', "Initializing address space, num pages %d, size %d\n", 
+					numPages, size);
+
+// first, set up the translation 
+    pageTable = new TranslationEntry[numPages + 10000];
+    
+	int availablePhyPage;
+	for (i = 0; i < numPages; i++) 
+	{
+		pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
+	
+		availablePhyPage= memoryBitmap->Find();
+		if(availablePhyPage==-1)
+		{
+			printf("\nNO MORE PHYSICAL MEMORY FOR THE NEW PROCESS");
+		}
+		
+		pageTable[i].physicalPage = availablePhyPage;
+		pageTable[i].valid = TRUE;
+		pageTable[i].use = FALSE;
+		pageTable[i].dirty = FALSE;
+		pageTable[i].readOnly = FALSE;  // if the code segment was entirely on 
+					// a separate page, we could set its 
+					// pages to be read-only
+    }
+	
+//Copying the Code and data segments into memory
+	for(i=0;i<numPages;i++)
+	{
+	  executable->ReadAt(&(machine->mainMemory[pageTable[i].physicalPage*PageSize]),
+						PageSize,
+						(noffH.code.inFileAddr+(pageTable[i].virtualPage*PageSize)));		
+	}
+
+}
+
+Addrspace::allocateStack() function is called everytime when a new thread is created for a process.
+
+-Called in Fork_Syscall when a new thread is spawned
+
+int AddrSpace::allocateStack()
+{
+	
+	int availablePhyPage;
+	int i;
+	for (i = numPages; i < numPages + 8; i++) {
+		
+		pageTable[i].virtualPage = i;
+		availablePhyPage = memoryBitmap->Find();
+		if(availablePhyPage==-1)
+		{
+			printf("\nCANNOT ALLOCATE STACK SINCE THERE IS NO PHYSICAL MEMORY");
+		}
+		pageTable[i].physicalPage = availablePhyPage;
+		pageTable[i].valid = TRUE;
+		pageTable[i].use = FALSE;
+		pageTable[i].dirty = FALSE;
+		pageTable[i].readOnly = FALSE;  		
+		
+	}
+	numPages = numPages+8;
+	machine->pageTable = pageTable;
+	return numPages;
+} 
+
+
+
+We have used a AllocateStack function to assign physical memory uninitialized data and thread stacks.
+
+Fork_Syscal
+------------
+
+*This system call will assign the current thread space to the new thread and adds this new thread to the process table. 
+*The run function is then used to run the newly forked thread.
+*The newly created thread will share the address space of the current process and has its own stack assigned using allcateStack() function
+
+// Fork Thread System Call
+
+void kernelThread(int vaddr)
+{	
+	machine->WriteRegister(PCReg,vaddr);
+	machine->WriteRegister(NextPCReg, vaddr+4);
+	currentThread->space->RestoreState();
+	machine->WriteRegister(StackReg,currentThread->myStackTop);
+	machine->Run();
+}
+
+void Fork_Syscall(int vaddr)
+{
+	int pages,stackStartLocation;
+	
+	numThreads++;
+	if(numThreads == MAX_THREADS)
+	{
+		printf("\nFORK : MAXIMUM THREADS LIMIT REACHED");
+		interrupt->Halt();
+	}
+	
+	//Acquire page table lock to update the Page Table 
+	PageTableLock->Acquire();
+	AddrSpace *currentAddrSpace = currentThread->space;
+	pages = currentAddrSpace->allocateStack();
+	stackStartLocation = pages*PageSize-16;
+	PageTableLock->Release();
+	
+	//Creating new thread
+	Thread *newThread = new Thread("Fork Thread");
+	newThread->space = currentAddrSpace;
+	newThread->myStackTop = stackStartLocation;
+	newThread->numPages = pages;
+	
+	//Acquire Process Table Lock to update the Process Table
+	ProcessTableLock->Acquire();
+	int pid = currentThread->myProcessID;	
+	newThread->threadID = processTable[pid].threadCount;
+	processTable[pid].threadCount++;
+	newThread->myProcessID=pid;
+	ProcessTableLock->Release();
+	
+	//Forking the Kernel Thread
+	newThread->Fork((VoidFunctionPtr)kernelThread,vaddr);
+	printf("\nFORK : THREAD FORKED FOR PROCESS %d,FORKED THREAD ID : %d",pid,newThread->threadID);
+}
+
+Exec_Syscall:
+
+*This Syscall opens an executable binary file, creates a new address space, copies the opened file in the address space
+*Thus it creates a new process with a main thread with its own code and data address spaces which are going to be shared 
+ among the forthcoming child processes.
+*The Fork_Syscall() is called everytime to create a main thread running instance of the binary file
+
+// Exec Thread System Call
+
+void Exec_thread()
+{
+	currentThread->space->InitRegisters();
+    currentThread->space->RestoreState();
+	machine->Run();
+}
+
+int Exec_Syscall(int vaddr,int len) 
+{
+	numProcesses++;
+	
+	if(numProcesses == MAX_PROCESS)
+	{
+		printf("\nEXEC : SORRY. MAXIMUM PROCESSES ALREADY IN EXECUTION");
+		interrupt->Halt();
+	}
+	
+	char *buf;
+	int i;
+	buf=new char[len+1];
+	buf[len]='\0';
+	if ( copyin(vaddr,len,buf) == -1 ) {
+	    printf("\nEXEC : BAD POINTER PASSED");
+		return -1;
+	}
+	
+	//Opening the process file and storing its pointer
+	OpenFile *executable = fileSystem->Open(buf);
+    
+	//Check if executable is null
+	if(executable == NULL) {
+		printf("\nEXEC : FILE POINTER IS NULL");
+		return -1;
+	}
+
+	//Creating new address space for this executable.
+	PageTableLock->Acquire();
+	AddrSpace *newAddrSpace = new AddrSpace(executable);
+	int pages=newAddrSpace->getNumPages();
+	PageTableLock->Release();
+	
+	//Create new thread for execution of process
+	Thread *newThread = new Thread("Exec Thread");
+	
+	//Allocate the space created to this thread's space
+	newThread->space = newAddrSpace;
+	newThread->numPages = pages;
+	
+	//Updating the Process table and related Data Structure
+	ProcessTableLock->Acquire();
+	int spaceID = nextProcessID++;
+	newThread->threadID=processTable[spaceID].threadCount;
+	processTable[spaceID].processID=spaceID;
+	processTable[spaceID].threadCount++;
+	processTable[spaceID].addrSpace= newAddrSpace;
+	newThread->myProcessID=spaceID;
+	processCount++;
+	ProcessTableLock->Release();
+
+	//Fork the thread for execution of process
+	newThread->Fork((VoidFunctionPtr)Exec_thread,0);
+	printf("\nEXEC : PROCESS %d CREATED",newThread->myProcessID);
+	return spaceID;	
+}
+
+
+IV .Implementation:
+===================
+
+ + Files Modified
+
+	-machine.h   : 	Modified	to increase the	number of physical pages in the	system to 32,000
+	-system.h    : 	Defined the required Condition variables, Lock and Process table data structures and other global extern variables like 
+					MAX_CHAR,MAX_CV,MAX_LOCK,MAX_LENGTH,nextLockIndex,nextCVIndex,nextProcessID and processCount;
+	-system.cc   : 	Initialized the values of all the data structures that we have defined in the system.h class. 
+					It includes the global variables like nextLockIndex,nextCVIndex,nextProcessID and processCount;
+	-Addrspace.cc: File	update in code/userprog/addresspace.cc to copy the virtual address space contents to physical memory pagewise.
+	-Addrspace.h : Variables and class constructors and destructors, function names declared.
+	-syscall.h   : File update in code/userprog/syscall.h new system	
+				   Calls added :
+				   Yield_Syscall(),CreateLock_Syscall(),DestroyLock_Syscall(),AcquireLock_Syscall(),ReleaseLock_Syscall(),Fork_Syscall(),Exec_Syscall(),Exit_Syscall(),									
+				   CreateCV_Syscall(),DestroyCV_Syscall(),WaitCV_Syscall(),SignalCV_Syscall(),BroadcastCV_Syscall(),Print_Syscall(),Scan(),RandomNum()
+	-progtest.cc : Updated the startProcess() to include the main process in the process table.
+	-exception.cc: All system calls are defined here
+	-start.s     : Added stubs for system calls
+	-MakeFile    : updated the make file in code/test/ folder to include new files for test cases.
+
+ + Functions added 
+
+		- in exception.cc
+		
+			1. void Yield();											//Yields current thread					
+			2. void Print(char *name);									//Print with no arguments
+			3. void Print1(char *name,int arg1);						//Print with one arguments
+			4. void Print2(char *name,int arg1, int arg2);				//Print with two arguments
+			5. void Print3(char *name,int arg1, int arg2, int arg3); 	//Print with three arguments
+			6. void PrintTest(char *name);								//Print with test arguments
+			7. int CreateLock(char *name,int len);						//Create a lock
+			8. void AcquireLock(int lockID);							//Acquire a lock
+			9. void ReleaseLock(int lockID);							//Release a lock
+			10. void DestroyLock(int lockID);							//Destroy a lock
+			11. int CreateCV(char *name,int len);						//Create a CV	
+			12. void SignalCV(int lockID,int cvID);						//Signal a CV
+			13. void WaitCV(int lockID,int cvID);						//Wait in a CV
+			14. void BroadcastCV(int lockID,int cvID);					//Broadcast a CV
+			15. void DestroyCV(int cvID);								//Destroy a CV
+			16. int scan();												//Get the input from the user
+			17. int RandomSearch();  									//Finds a random number for the user program
+			18. void Fork(void (*func)());								//Forks a thread
+			19. void Exit(int status);									//Exits the current thread adnd checks for exiting the process
+			
+			
+		-addrspace.cc
+		
+			1. AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) Constructor implementation       // allocates address space to a newly created process
+			2. int AddrSpace::allocateStack()     	//allocates stack to the newly created thread
+			3. int AddrSpace::getNumPages()       	//returns the current numPages value of the address space pointer
+			4. void AddrSpace::clearMemory()    	//deallocates the stack of the currently destroyed thread
+			
+ + Files added 
+	In test directory
+		
+		
+ + Data Structures added, and the file they were added to.
+ 
+	Structures:
+	-----------
+	processTableStruct 	:	Added to ../code/threads/system.h header file
+	CVTypeStruct  	   	: 	Added to ../code/threads/system.h header file
+	LockTypeStruct		: 	Added to ../code/threads/system.h header file
+	
+	
+ + Data Structures modified, and the file they were added to
+	
+	Thread class		:	Thread class is modified with member variables like 
+							-int myStackTop
+							-int threadID
+							-Addrspace space
+							-int myProcessID
+							to keep track of the current state of the thread.
+	
+V. Testing
+===========
+
+We have designed a series of test suites to test out code. The test primarily check whether 
+-the acquiring, releasing, destroying, creation etc of the lock and Condition variables is valid when checked against a variety of inputs. 
+-We have designed 8 test cases to test our implementation of system calls CreateLock_Syscall, DestroyLock_Syscall, AcquireLock_Syscall, ReleaseLock_Syscall, CreateCV_Syscall,DestroyCV_Syscall, SignalCV_Syscall, BroadcastCV_Syscall, WaitCV_Syscall, RandomSearch, Print_Syscall, Scan,Exit_Syscall, Yield_Syscall.
+-The Fork and Exec system calls are also tested. The super market simulation has also been integrated with the newly designed system calls. We have also included a test where two different instances of the super market simulation run together.
+
+NOTE: All the test cases including the simulation works with any rs values. 
+	  It is suggested not to use rs values for Yield-Syscall(since for some rs values it cant be perceived).
+
+The tests for part 1&2 and simulation for part3 of the assignment can be run from the ../code/userprog directory
+
+The command to run the test menu is: 
+
+------------------------------------
+nachos -x ../test/test
+------------------------------------
+
+The following command should be used to test the programs with rs values 
+
+To run the options 2, 3 and 4
+-----------------------------------------------
+nachos -x ../test/test -rs <value>
+-----------------------------------------------
+
+We have created three test locks testlk1, testlk2,testlk3 and a test CV testcv1 to participate in all the test. 
+
+Option 1  : Creating maximum locks or Condition variables(>1000)
+			-We have set the maximum limit for the locks and Condition variables to be 1000 each. 
+			-This test case tries to create locks more than 1000 and shows that it is impossible to create locks more than 1000
+			-This test case also ensures that creating locks and CVs functionalities are working well.
+			
+Option 2  : Creating lock with invalid length (500)
+			-We have set the maximum length of the lock variable name to be 50.
+			-This test case ensures that when the name of the lock is more than 50 it is notified to the user
+			
+Option 3  : Destroying a created lock
+			-This test case ensures the functionality of destroying the already existing lock. 
+			-If the current thread is the only execution stream using that lock it will be destroyed immediately or it will wait till all the threads uses it and disallows any thread to add to the wait queue of the lock by setting istobedeleted value to be true
+
+Option 4  : Acquiring and releasing a lock
+			- This test is for acquiring and releasing the lock. 
+			- We tried to acquire and release locks with correct lockid.
+			- LockIds are passed as arguments.
+			
+Option 5  : Acquiring and releasing an invalid lock
+			- This test is for acquiring and releasing the lock with invalid arguments. 
+			- We are trying to acquire and release locks with incorrect lockid.
+			- LockIds are passed as arguments.
+			
+Option 6  : Acquiring and releasing a destroyed lock
+			- This test is for acquiring and releasing the destroyed lock. 
+			- We are trying to acquire and release locks which is no more available.
+			- LockIds are passed as arguments.
+
+Option 7  : Executing maximum processes (>10)
+			- We have set the maximum processes that can be run for our system to be 10 
+			- Here we are trying to create more processes than the restricted count of 10
+
+Option 8  : Forking maximum threads (>1000)
+			- We have set the maximum count for the threads to be 1000
+			- Here we are trying to fork more than 1000 threads
+			
+Option 9  : Wait and signal using fork - Customer waiting, Salesman signalling
+			- This test is to ensure the proper working of Wait and Signal functionalities
+			- Salesman thread acquires his interaction lock and waits on his interaction CV releasing his lock
+			- Customer acquires the interaction lock and signals him.
+
+Option 10 : Wait and Signal using fork - Salesman waiting, Customer signalling
+			- This test is just the reverse funcionality of the previous test case
+			- Here the customer is waiting and the salesman signals him for interaction
+			
+Option 11 : Scanning a number and printing it once,twice and thrice
+			- This test proves the functionality of scan syscall to get input from the user for userprograms and priting the output on the user console using Print syscall
+			- Print1_Syscall,Print2_Syscall, Print3_Syscall to print multiple arguments are also tested in this test case by printing same arguments multiple times
+			
+Option 12 : Yield test (Works without -rs)
+			- This test ensures the working of Yield functionality of the kernel function
+			- The currently running thread gives way to the thread waiting in the ready queue of the scheduler
+			- It is very difficult to understand the working of this functionality when it is tried with some rs values.
+			- So it is suggested to use it without any rs values
+			
+Option 13 : Exit test
+			- This test ensures the functionality of Exit_Syscall.
+			- When the count of running threads and the processes becomes zero our application quits 
+
+Option 14 : Single Simulation of Project1
+			- This option runs for a single instance of our super market simulation with multiple customer,cashier,salesman,goodsloader threads
+			- Works good with any rs values
+			- input values are hard coded
+				No of departments = 3
+				No of salesmen = 3 per department
+				No of Customers = 30
+				No of Cashiers = 3
+				No of GoodsLoaders = 3	
+				No of Manager = 1 
+			
+Option 15 : Multiple Simulation of Project1 - 2 simulations
+			- This option runs for two instances of our super market simulation with multiple customer,cashier,salesman,goodsloader threads
+			- Works good with any rs values
+			- input values are hard coded
+				No of departments = 3
+				No of salesmen = 3 per department
+				No of Customers = 30
+				No of Cashiers = 3
+				No of GoodsLoaders = 3	
+				No of Manager = 1
+				for every instance of supermarket simulation
+
+Option 16 : Multiple Simulation of Project1 - 3 simulations
+			- This option runs for three instances of our super market simulation with multiple customer,cashier,salesman,goodsloader threads
+			- Works good with any rs values
+			- input values are hard coded
+				No of departments = 3
+				No of salesmen = 3 per department
+				No of Customers = 30
+				No of Cashiers = 3
+				No of GoodsLoaders = 3	
+				No of Manager = 1
+				for every instance of supermarket simulation
+========================================================================================================================================================				
+
+Note : 
+======
+
+- Since the item preferences for the customers are generated at random,the total sales of all the three instances might not be equal.
+- To ensure the correctness, it is suggested to count the item prefernces of all the customers and compare it with the total sales
+- The cost of each item is assumed to be 1$.
+- The initial money in hand for every customer is assumed to be 50
+- Each time the goods loader is requested to refill the shelf,he will refill it with the quantity of 10
+- FOR PART 1&2, ALL THE CONDITIONS ARE COVERED IN THE ABOVE TEST CASES
+
+========================================================================================================================================================= 
+
+ + Test Outputs
+ 
+-------------------------------------------- 
+ 
+Test output for Option 1  : Creating maximum locks or Condition variables(>1000)
+
+
+CREATELOCK : LOCK 993 CREATED
+CREATELOCK : LOCK 994 CREATED
+CREATELOCK : LOCK 995 CREATED
+CREATELOCK : LOCK 996 CREATED
+CREATELOCK : LOCK 997 CREATED
+CREATELOCK : LOCK 998 CREATED
+CREATELOCK : LOCK 999 CREATED
+CREATELOCK : LOCK LIMIT REACHED. NO MORE LOCKS FOR YOUMachine halting!
+
+----------------------------------------------------------------------
+
+Test output for option 2  : Creating lock with invalid length (500)
+
+
+CREATELOCK : INVALID LOCK LENGTHMachine halting!
+
+
+-----------------------------------------------------------
+
+Test output for Option 3  : Destroying a created lock
+
+CREATELOCK : LOCK 0 CREATED
+LOCK DESTROY : LOCK 0 DESTROYEDMachine halting!
+
+-----------------------------------------------------------
+
+Test output for Option 4  : Acquiring and releasing a lock
+
+CREATELOCK : LOCK 0 CREATED
+LOCK ACQUIRE : THREAD 0 FROM PROCESS 0 ACQUIRED LOCK 0
+LOCK RELEASE : THREAD 0 FROM PROCESS 0 RELEASED LOCK 0Machine halting!
+
+-------------------------------------------------------------
+
+Test output for Option 5  : Acquiring and releasing an invalid lock
+
+CREATELOCK : LOCK 0 CREATED
+LOCK ACQUIRE : INVALID LOCK NUMBERMachine halting!
+
+-------------------------------------------------------------
+
+Test output for Option 6  : Acquiring and releasing a destroyed lock
+
+CREATELOCK : LOCK 0 CREATED
+LOCK DESTROY : LOCK 0 DESTROYED
+LOCK AQCUIRE : THE LOCK YOU ARE TRYING TO ACQUIRE IS NO LONGER ALIVEMachine halting!
+
+-------------------------------------------------------------
+
+Test ouput for Option 7  : Executing maximum processes (>10)
+
+EXEC : PROCESS 5 CREATED
+EXEC : PROCESS 6 CREATED
+EXEC : PROCESS 7 CREATED
+EXEC : PROCESS 8 CREATED
+EXEC : PROCESS 9 CREATED
+EXEC : SORRY. MAXIMUM PROCESSES ALREADY IN EXECUTIONMachine halting!
+
+--------------------------------------------------------------
+
+Test output for Option 8  : Forking maximum threads (>1000)
+
+FORK : THREAD FORKED FOR PROCESS 0,FORKED THREAD ID : 991
+FORK : THREAD FORKED FOR PROCESS 0,FORKED THREAD ID : 992
+FORK : THREAD FORKED FOR PROCESS 0,FORKED THREAD ID : 993
+FORK : THREAD FORKED FOR PROCESS 0,FORKED THREAD ID : 994
+FORK : THREAD FORKED FOR PROCESS 0,FORKED THREAD ID : 995
+FORK : THREAD FORKED FOR PROCESS 0,FORKED THREAD ID : 996
+FORK : THREAD FORKED FOR PROCESS 0,FORKED THREAD ID : 997
+FORK : THREAD FORKED FOR PROCESS 0,FORKED THREAD ID : 998
+FORK : THREAD FORKED FOR PROCESS 0,FORKED THREAD ID : 999
+FORK : MAXIMUM THREADS LIMIT REACHEDMachine halting!
+
+---------------------------------------------------------------
+
+Test output for Option 9  : Wait and signal using fork - Customer waiting, Salesman signalling
+
+CREATELOCK : LOCK 0 CREATED
+CREATECV : CV 0 CREATED
+FORK : THREAD FORKED FOR PROCESS 0,FORKED THREAD ID : 1
+FORK : THREAD FORKED FOR PROCESS 0,FORKED THREAD ID : 2
+LOCK ACQUIRE : THREAD 1 FROM PROCESS 0 ACQUIRED LOCK 0
+WAITCV: THREAD 1 WAITING IN CV 0 
+LOCK ACQUIRE : THREAD 2 FROM PROCESS 0 ACQUIRED LOCK 0
+SIGNALCV:THREAD 2 SIGNALLED CV 0
+LOCK RELEASE : THREAD 2 FROM PROCESS 0 RELEASED LOCK 0
+LOCK RELEASE : THREAD 1 FROM PROCESS 0 RELEASED LOCK 0Machine halting!
+
+----------------------------------------------------------------
+
+Test output for Option 10 : Wait and Signal using fork - Salesman waiting, Customer signalling
+
+CREATELOCK : LOCK 0 CREATED
+CREATECV : CV 0 CREATED
+Customer acquired the lock
+Customer waiting for Salesman signal
+Salesman acquired the lock
+Salesman signalling Customer
+Salesman released the lock
+Customer released the lockMachine halting!
+
+-----------------------------------------------------------------
+
+Test output for Option 11 : Scanning a number and printing it once,twice and thrice
+
+Enter a number: 8
+
+Simulation0 : Print with one argument : 8
+Simulation0 : Print with two arguments : 8 8
+Simulation0 : Print with three arguments : 8 8 8 
+EXIT : THREAD FINISHED EXECUTION Machine halting!
+
+-------------------------------------------------------------------------------------
+
+Test output for Option 13 : Exit test
+
+EXIT : THREAD FINISHED EXECUTION Machine halting!
+
+-------------------------------------------------------------------------------------
+
+Test output for Option 14 : Single Simulation of Project1
+
+Simulation1 : Privileged Customer [15] got receipt from Manager and is now leaving.
+Simulation1 : Privileged Customer [15] is leaving the trolley
+Simulation1 : Privileged Customer [15] exits the store
+Simulation1 : Manager emptied Counter [0] drawer.
+Simulation1 : Manager has total sale of $[829]
+Simulation1 : Cashier 0 Status : 2
+Simulation1 : Manager emptied Counter [1] drawer.
+Simulation1 : Manager has total sale of $[829]
+Simulation1 : Cashier 1 Status : 2
+Simulation1 : Manager emptied Counter [2] drawer.
+Simulation1 : Manager has total sale of $[829]
+Simulation1 : Cashier 2 Status : 0
+Simulation1 : Total Sales from Counter [0] is $[587]
+Simulation1 : Total Sales from Counter [1] is $[5]
+Simulation1 : Total Sales from Counter [2] is $[43]
+Simulation1 : Total Sales from Manager counter is $[194]
+Simulation1 : Total Sale of the entire store is $[829]No threads ready or runnable, and no pending interrupts.
+Assuming the program completed.
+Machine halting!
+
+
+-------------------------------------------------------------------------------------
+
+Test output for Option 15 : Multiple Simulation of Project1 - 2 simulations
+
+Simulation2 : Manager emptied Counter [0] drawer.
+Simulation2 : Manager has total sale of $[702]
+Simulation2 : Cashier 0 Status : 0
+Simulation2 : Manager emptied Counter [1] drawer.
+Simulation2 : Manager has total sale of $[702]
+Simulation2 : Cashier 1 Status : 0
+Simulation2 : Manager emptied Counter [2] drawer.
+Simulation2 : Manager has total sale of $[702]
+Simulation2 : Cashier 2 Status : 0
+Simulation2 : Total Sales from Counter [0] is $[702]
+Simulation2 : Total Sales from Counter [1] is $[0]
+Simulation2 : Total Sales from Counter [2] is $[0]
+Simulation2 : Total Sales from Manager counter is $[0]
+Simulation2 : Total Sale of the entire store is $[702]
+
+
+Simulation1 : Privileged Customer [15] got receipt from Manager and is now leaving.
+Simulation1 : Privileged Customer [15] is leaving the trolley
+Simulation1 : Privileged Customer [15] exits the store
+Simulation1 : Manager emptied Counter [0] drawer.
+Simulation1 : Manager has total sale of $[829]
+Simulation1 : Cashier 0 Status : 2
+Simulation1 : Manager emptied Counter [1] drawer.
+Simulation1 : Manager has total sale of $[829]
+Simulation1 : Cashier 1 Status : 2
+Simulation1 : Manager emptied Counter [2] drawer.
+Simulation1 : Manager has total sale of $[829]
+Simulation1 : Cashier 2 Status : 0
+Simulation1 : Total Sales from Counter [0] is $[587]
+Simulation1 : Total Sales from Counter [1] is $[5]
+Simulation1 : Total Sales from Counter [2] is $[43]
+Simulation1 : Total Sales from Manager counter is $[194]
+Simulation1 : Total Sale of the entire store is $[829]No threads ready or runnable, and no pending interrupts.
+Assuming the program completed.
+Machine halting!
+
+-------------------------------------------------------------------------------------
+
+Test output for Option 16 : Multiple Simulation of Project1 - 3 simulations
+
+Simulation3 : Privileged Customer [5] got receipt from Manager and is now leaving.
+Simulation3 : Privileged Customer [5] is leaving the trolley
+Simulation3 : Privileged Customer [5] exits the store
+Simulation3 : Manager emptied Counter [0] drawer.
+Simulation3 : Manager has total sale of $[838]
+Simulation3 : Cashier 0 Status : 2
+Simulation3 : Manager emptied Counter [1] drawer.
+Simulation3 : Manager has total sale of $[838]
+Simulation3 : Cashier 1 Status : 0
+Simulation3 : Manager emptied Counter [2] drawer.
+Simulation3 : Manager has total sale of $[838]
+Simulation3 : Cashier 2 Status : 0
+Simulation3 : Total Sales from Counter [0] is $[446]
+Simulation3 : Total Sales from Counter [1] is $[0]
+Simulation3 : Total Sales from Counter [2] is $[254]
+Simulation3 : Total Sales from Manager counter is $[138]
+Simulation3 : Total Sale of the entire store is $[838]
+
+Simulation2 : Privileged Customer [23] pays $[41] to Cashier [0] and is now waiting for receipt
+Simulation2 : Privileged Customer [23] is leaving the trolley
+Simulation2 : Privileged Customer [23] exits the store
+Simulation2 : Manager emptied Counter [0] drawer.
+Simulation2 : Manager has total sale of $[702]
+Simulation2 : Cashier 0 Status : 2
+Simulation2 : Manager emptied Counter [1] drawer.
+Simulation2 : Manager has total sale of $[702]
+Simulation2 : Cashier 1 Status : 0
+Simulation2 : Manager emptied Counter [2] drawer.
+Simulation2 : Manager has total sale of $[702]
+Simulation2 : Cashier 2 Status : 0
+Simulation2 : Total Sales from Counter [0] is $[702]
+Simulation2 : Total Sales from Counter [1] is $[0]
+Simulation2 : Total Sales from Counter [2] is $[0]
+Simulation2 : Total Sales from Manager counter is $[0]
+Simulation2 : Total Sale of the entire store is $[702]
+
+
+Simulation1 : Privileged Customer [15] got receipt from Manager and is now leaving.
+Simulation1 : Privileged Customer [15] is leaving the trolley
+Simulation1 : Privileged Customer [15] exits the store
+Simulation1 : Manager emptied Counter [0] drawer.
+Simulation1 : Manager has total sale of $[829]
+Simulation1 : Cashier 0 Status : 2
+Simulation1 : Manager emptied Counter [1] drawer.
+Simulation1 : Manager has total sale of $[829]
+Simulation1 : Cashier 1 Status : 2
+Simulation1 : Manager emptied Counter [2] drawer.
+Simulation1 : Manager has total sale of $[829]
+Simulation1 : Cashier 2 Status : 0
+Simulation1 : Total Sales from Counter [0] is $[587]
+Simulation1 : Total Sales from Counter [1] is $[5]
+Simulation1 : Total Sales from Counter [2] is $[43]
+Simulation1 : Total Sales from Manager counter is $[194]
+Simulation1 : Total Sale of the entire store is $[829]No threads ready or runnable, and no pending interrupts.
+Assuming the program completed.
+Machine halting!
+
+----------------------------------------------------------------------------------------------------
+
+

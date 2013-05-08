@@ -1,0 +1,932 @@
+--------------------------------------------------------------------------------
+Title:Writeup for Project 03 - Demand Paged Virtual Memory and Basic Networking.
+
+--------------------------------------------------------------------------------
+
+Date:  07/10/2012
+
+Group Num 23 :         Name            			Email                  		Student ID
+
+                       Sriram Ganesh	    		sriramga@usc.edu       	6175304514
+                       Sreebalaji Varadharajan		svaradha@usc.edu  		4888549097
+                       Satheeshkumar Karuppusamy	karuppus@usc.edu		7349719900
+
+
+					   
+I Requirements:
+===============
+
+Part1
+------
+
+In this part we are supposed to implement the following extensions to the Memory management scheme we have implemented in Project2
+
+1. Memory management using Translation Lookaside buffer(TLB):
+	- Software implementation for TLB
+	- Implentation of Page Translation scheme to keep track of data set by hardware in the Hardware TLB 
+	- Hardware should deal with TLBs instead of the Pagetables
+	
+Part 2
+------
+
+Part2 deals with the implementation of demand paged virtual memory
+
+1. Implementation of demand Paged Virtual Memory:
+	- Implementation of Inverted Page Table Mechanism to map the virtual addresses to the physical address in case of TLB misses.
+	- Implementing mechanism to handle IPT misses(when the required virtual page is not in physical memory)
+	- Implementing Page eviction scheme in case of full memory when the program tries to load its required virtual page 
+	- Implementing swap file mechanism for tracking the modified(dirty) content of the loaded pages from the disk 	
+	- As a whole our scheme should load the required page either from the disk(exectable),swap file(dirty content), memory in case of TLB misses	
+	
+Part 3
+-------
+
+1. Implementation of Remote Procedure Calls
+	- To implement Remote Procedure calls for creating,acquiring,releasing and destroying locks and condition variables
+		-System calls : Create,Acquire and Destroy
+	- To implement RPCs for creating,setting,getting and destroying the values of Monitor variables
+		-System calls : Create,Set,Get and Destroy
+	- Implementation of client-server mechanism to make the locks,cvs and monitor variables to be shared across all the clients
+	- Locks,CVs and Monitor variables are shared across all clients(more than one machine)
+	
+II Assumptions
+===============
+
+1. Server runs with the machine id as 0 and the mail box id as 000
+2. Run only one test case at a time
+
+
+III. Design
+===========
+
+Part1 and Part2 :
+
+
+	Step1 : TLB implementation
+	---------------------------------------
+		- We no longer use Page table to translate. We are using Software implementation of Page tables to translate the virtuall addresses to physical addresses  
+		- We invalidate all the entries when there is a context switch
+		- Page table is maintained as process specific as we already had.
+		- On a Page Fault Exception we get the virtual page number by dividing value of BadVAddrReg register by the PageSize.
+		- Then we search the page table of the current thread and populate the TLB entry 
+		- Every time during the page fault exception, we are populating the TLB using page table entry.
+		
+	Step2 : IPT implementation
+	---------------------------------------
+		- IPT is a table which is indexed with the Physical page and maintains the details like the mapped virtual page, correspoding process id, address space etc. for each physical page
+		- Technically, IPT is a specialized version of the translation entry class.
+		- IPT gets populated when a new process is created or a new thread is forked
+		- On Page Fault, we  search the IPT for the required page by comparing the process-id (compared to the process id of current running process) or the address space,
+		  valid bit(must be equal to true) and virtual page number(must be equal to vpn on which page fault occurred).
+		- Populate TLB from IPT.
+		- IPT just acts as a indexing table for memory.
+		- In this step, we have assumed the memory to be finite but very large. So every page faults can be handled by the IPT. 
+	
+	class myTranslationEntry:public TranslationEntry{
+	public:
+		int pageType;
+		int pageLocation;
+		int processID;
+		int timeStamp;
+		AddrSpace *addrSpace;
+	};
+	
+	extern myTranslationEntry *ipt;
+	
+	Step3 : Without preloading everything in memory
+	------------------------------------------------
+		- Main memory is still assumed to be large enough to accomodate all the pages.
+		- we are not preloading anything in the memory.
+		- On Page fault,search IPT for the required virtual page.
+		- If entry is found in IPT, TLB is updated by turning interrupts on/off. 
+		- If it is not in IPT as well then,
+			- Find a location which is free in main memory using bitmap object.
+			- Load the required page in main memory if it is an EXECUTABLE.
+			- Update the pageTable of the current running process.
+			- Update IPT table as well.
+			- Then, update TLB by turning interrupts on/off.
+
+			
+	Step4 : Demand Paged Virtual Memory 
+	-----------------------------------
+		- Restrict the size of the number of physical pages
+		- Set NumPhysPages to 32
+		- Dirty bits are propagated from TLB to IPT whenever there is context switch or there is pagefault.
+		- If required page is not in IPT i.e. not in main memory then it is loaded in memory as follows:
+		- Try to find a free location in main memory using bitmap object.
+		- If a free location is found in memory then load the page in memory either from SWAP File or from EXECUTABLE.
+		- If there is no free physical page, we find a page using FIFO or RANDOM algorithms and evict it.
+		- Then the demanded virtual page is loaded into that physical page.
+		
+		- The page eviction policy is as follows:
+			-Random:
+				- Choose a physical random page with use bit as 0
+				- Set the use flag to 1 and evic it by loading the current virtual page into that particular physical page 
+			-FIFO:
+				- A FIFO queue is created which maintains the ids of all the used physical pages
+				- When a page fault occurs and physical memory is full,
+					-Choose a physical page which is at the beginning of the queue i.e, the page that has not been used more recently
+		
+		- During every IPT miss,fifo policy is used by default for page eviction.
+		- We are setting the valid bit of the selected physical page to false and set inUse bit true. 
+		(This is required as no other process can select the same page for eviction while currently selected page is being evicted).
+		- If selected page is dirty then it is written to swap file 
+		(If it was already in swap file then it is loaded back at different location and the offset of the location is tracked)
+		- Update the page table to reflect the location of the evicted page. 
+		- Update IPT and TLB.
+		- Set inUse bit to false for the memory location in IPT as eviction is completed.	
+	
+		class newTranslationEntry:public TranslationEntry{
+		public:
+			int byteOffset;
+			int pageLocation;
+			int processID;
+		};
+	
+Part 3: Remote Procedure Calls
+------------------------------
+	- The system call implementations that are being called directly called within a single machine is converted into a client-server system
+	- The server performs the system call for the client and returns any result back to the client
+	- This means that all user programs share all Locks and CVs. They are no longer process specific.
+	
+	The following design scheme is implemented to implement our client-server mechanism:
+	
+	Client Side Design:
+	--------------------
+	- Client is a user program
+	- Client stub is a program which handles system call exceptions. In our case it is exception.cc
+	- When a systemcall is invoked by the user program,
+	
+		- Create a client side packet header with following details:			
+			PacketHeader:
+				class PacketHeader {
+				public:
+					NetworkAddress to;		// Destination machine ID
+					NetworkAddress from;	// source machine ID
+					unsigned length;	 	// bytes of packet data, excluding the 
+								// packet header (but including the 
+								// MailHeader prepended by the post office)
+				};
+								
+			MailHeader:
+				class MailHeader {
+					public:
+					MailBoxAddress to;		// Destination mail box
+					MailBoxAddress from;	// Mail box to reply to
+					unsigned length;		// Bytes of message data (excluding the 
+				// mail header)
+				};
+			- Set the machine id of the client to be 0.
+			- Set the machine and mailbox id of the client to be o
+			- Set the length of the packet to be the length of the data part
+			
+		-Create a client side packet with the following data part:-
+			- typedef struct clientPacket{
+					char name1[MAX_NAMELENGTH];
+					char name2[MAX_NAMELENGTH];
+		
+					int syscall;
+					int index1;
+					int index2;
+					int value;
+				}
+	
+	- Send the packet created to the server
+	- Wait for the reply from the server
+	- Once the server replies,
+		- decode the packet and check for the status. If the status is true, send the reply to the user program
+	
+	- The system call implementations in exceptions are modified such that the code for interacting with the server is added only while running from the ../code/NETWORK directory
+	- Create Syscalls:
+		-Get the virtual address from the userprogram and check for valid virtual address
+		- If the vaddr is valid,
+			- create a client side packet and send to the server who is waiting for client side requests
+			- get reply message
+			- Decode the packet and check the status 
+			- If it is true, then reply the newly created value else reply -1 to the userprogram
+	- Other system calls:
+		-Get the virtual address from the user program and check for validity of the virtual address
+		- If the virtual address is valid,
+			- create a client side packet and send to the server who is waiting for client side requests
+			- get reply message
+			- Decode the packet and check the status 
+			-If it is true,reply to the client message as success
+			
+	Server Side Design:
+	-------------------
+	- The Server doesnt have a separate stub. It handles every request by its own
+	- Server waits for request from the client stub
+	- When it receives the client request
+		- decodes client packet header and reads the mail box, machine ids of the client and the length of the data
+		- decodes the data part and reads the systemcall requested
+		- system call implementations are given in the server side
+		- Server handles them and replies to that particular client by creating its own packet
+		
+		typedef struct serverPacket{
+			bool status;
+			int value;
+		}
+		
+		- status(can be true or false). True - the request has been handled False - The request cannot be handled
+		- value(requested value from the retuned)
+	- The monitor variable system call has also been created in the server side for creating, getting the values and setting the values of the montor variables 
+	- Server doesnt halts. It waits for the client request and replies the client whenever it gets the request	
+	
+	- System call definitions that are declared in client and server sides:
+		#define SC_CreateLock	16
+		#define SC_AcquireLock	17
+		#define SC_ReleaseLock	18
+		#define SC_DestroyLock	19	
+		#define SC_CreateCV		20
+		#define SC_SignalCV		21
+		#define SC_WaitCV		22
+		#define SC_BroadcastCV	23
+		#define SC_DestroyCV	24
+		#define SC_Scan			25
+		#define SC_Rand			26
+		#define SC_Flag			28
+		#define SC_PrintTest	27
+		#define SC_CreateMV		29
+		#define SC_GetMV		30
+		#define SC_SetMV		31
+		#define SC_DestroyMV	32
+	
+
+IV .Implementation:
+===================
+
+ + Files Modified
+
+	Part 1 and Part2 :
+		-exception.cc in userprog directory
+		-addrspace.cc in userprog directory
+		-addrspace.h in userprog directory
+		-progtest.cc in userprog directory
+		-machine.h in machine directory
+		-system.h in threads directory
+		-system.cc in threads directory
+	
+	Part 3 :
+		-exception.cc in userprog directory
+		-syscall.h in userprog and test directory
+		-system.h in threads directory
+		-system.cc in threads directory
+		-start.s in test directory and threads directory
+		-Makefile.common in code directory
+		-main.cc in threads directory
+		
+	Files added:
+		-server.cc in network directory	
+		-server.h in network directory
+
+	
+ + Functions added 
+
+		- in exception.cc
+			1. void send(char *syscallType,clientPacket packetToSend);
+			2. int receive(char *syscallType);
+			3. serverPacket receiveAckPacket(char *syscallType);
+			4. int CreateMV_Syscall(int vaddr,int len,int initialValue)
+			5. void SetMV_Syscall(int mvID,int value);
+			6. int GetMV_Syscall(int mvID);
+			7. void DestroyMV_Syscall(int mvID);
+
+		- addrspace.cc
+		
+			1. int AddrSpace::handleMemoryFull();
+			2. int AddrSpace::handleIptMiss(int vpn);
+			3. void AddrSpace::handlePageFault();			
+			2. AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) Constructor implementation       // allocates address space to a newly created process
+			3. int AddrSpace::allocateStack()     	//allocates stack to the newly created thread
+			4. int AddrSpace::getNumPages()       	//returns the current numPages value of the address space pointer
+			5. void AddrSpace::clearMemory()    	//deallocates the stack of the currently destroyed thread
+			
+		- in server.cc
+			
+			1. void send(char *type,bool status,int ID,int machineID,int mailBoxID);
+			2. int searchMap(char type,char *name);
+			3. int insertMap(char type,char *name);
+			4. void createMV(char *name,int initialValue,int machineID,int mailBoxID);
+			5. void setMV(int mvID,int value,int machineID,int mailBoxID);
+			6. void getMV(int mvID,int machineID,int mailBoxID);
+			7. void createLock(char *name,int machineID,int mailBoxID);
+			8. void acquireLock(int index,int machineID,int mailBoxID);
+			9. void releaseLock(int index,int machineID,int mailBoxID,int syscallType);
+			10. void destroyLock(int index,int machineID,int mailBoxID);
+			11. void createCV(char *name,int machineID,int mailBoxID);
+			12. void waitCV(int index1,int index2,int machineID, int mailBoxID);
+			13. void signalCV(int index1,int index2,int machineID, int mailBoxID);
+			14. void broadcastCV(int index1,int index2,int machineID, int mailBoxID);
+			15. void destroyCV(int index,int machineID,int mailBoxID);
+			16. void destroyMV(int index,int machineID,int mailBoxID);
+			17. void Server();
+			
+			
+ + Files added 
+	- In test directory
+	
+	- In network directory
+		-server.cc in network directory	
+		-server.h in network directory		
+		
+ + Data Structures added, and the file they were added to.
+ 
+	Structures:
+	
+	Part 1 and 2:	
+	-------------
+	
+	In system.h,
+	
+	class myTranslationEntry:public TranslationEntry{
+		public:
+			int pageType;
+			int pageLocation;
+			int processID;
+			int timeStamp;
+			AddrSpace *addrSpace;
+	};
+	
+	extern myTranslationEntry *ipt;	
+	
+	In addrspace.h,
+	
+	class newTranslationEntry:public TranslationEntry{
+		public:
+			int byteOffset;
+			int pageLocation;
+			int processID;
+	};
+	
+	Part 3:
+	-------
+	
+	In system.h 
+	
+	typedef struct clientPacket{
+		char name1[MAX_NAMELENGTH];
+		char name2[MAX_NAMELENGTH];
+		
+		int syscall;
+		int index1;
+		int index2;
+		int value;
+		
+		clientPacket(){
+			syscall=-1;
+			/*name1=(char *)malloc(MAX_CHAR*sizeof(char *));
+			name2=(char *)malloc(MAX_CHAR*sizeof(char *));*/
+			name1[0]='\0';
+			name2[0]='\0';
+			index1=-1;
+			index2=-1;
+			value=-1000;
+		}
+		
+		void print(){
+			printf("\nSyscall: %d\tName1: %sName2: %s\tIndex1: %d\tIndex2: %d\tValue: %d",syscall,name1,name2,index1,index2,value);
+		}
+	};
+
+	typedef struct serverPacket{
+		bool status;
+		int value;
+		
+		void print(){
+			printf("\nStatus: %d\tValue: %d",status,value);
+		}
+	};	
+		
+	In server.h,
+		
+	struct client{
+		int machineID;
+		int mailBoxID;
+	};
+	
+	struct serverLockStruct{
+		char *name;
+		
+		bool isToBeDeleted;
+		bool isDeleted;
+		bool valid;
+		bool available;
+		
+		int count;
+		int lockID;
+		
+		List *waitQueue;
+		
+		client owner;
+	};
+	
+	struct serverCVStruct{
+		char *name;
+		
+		bool isToBeDeleted;
+		bool isDeleted;
+		bool valid;
+		bool available;
+		
+		int count;
+		int cvID;
+		int lockID;
+		
+		List *waitQueue;
+		
+		client owner;
+	};
+	
+	struct serverMVStruct{
+		char *name;
+		
+		int mvID;
+		int value;
+		
+		//int size;
+		int count;
+		bool valid;				
+	};
+	
+	In syscall.h and server.h,
+	
+	#define SC_CreateMV		29
+	#define SC_GetMV		30
+	#define SC_SetMV		31
+	#define SC_DestroyMV	32
+	
+	
+ + Data Structures modified, and the file they were added to
+	
+V. Testing
+===========
+
+We have designed a series of test suites to test our code. The test primarily check whether 
+- the memory management scheme we have implemented using TLB, IPT and disk memory is working properly using user programs like matmult and sort
+- the creating, acquiring, releasing, destroying etc of the lock and Condition variables is working and validates all the possible conditions across the client-server system. 
+- the creating, getting the value and setting the value of the monitor variable is working fine
+NOTE: All the test cases and the parts 1 and 2 works with any rs values. 
+
+TO TEST PART 1 AND 2:
+=====================
+>>PART 1 :
+
+	-> Set NumPhysPages to some value big enough (>500)
+	-> Interrupts are disabled for machine->tlb access.
+	-> Default page replacement policy : FIFO
+	-> Add -FIFO or -RAND to the command to select the page replacement policy
+
+The tests for part 1&2 of the assignment can be run from the ../code/vm directory
+
+The command to run the test menu is: 
+
+-----------------------------------------------------
+nachos -x ../test/testcasesForProject3_part1_2 -PFIFO
+nachos -x ../test/testcasesForProject3_part1_2 -PRAND
+-----------------------------------------------------
+
+The following command should be used to test the programs with rs values 
+
+-----------------------------------------------------------------
+nachos -x ../test/testcasesForProject3_part1_2 -PFIFO -rs [value]
+nachos -x ../test/testcasesForProject3_part1_2 -PRAND -rs [value]
+-----------------------------------------------------------------
+
+Option 1	: Matmult - Single Exec
+				-Test case for runnning matmult.c single time using Exec().
+
+Option 2	: Sort - Single Exec
+				-Test case for runnning sort.c single time using Exec().
+
+Option 3	: Matmult - Single Fork
+				-Test case for runnning matmult single time using Fork().
+				-matmult.c file has been copied and made as a funtion - matmult1() and forked.
+
+Option 4	: Sort - Single Fork
+				-Test case for runnning sort single time using fork.
+				-sort.c file has been copied and made as a funtion - sortTest1() and forked.
+
+Option 1	: Matmult - Double Exec
+				-Test case for runnning matmult.c twice using Exec().
+
+Option 2	: Sort - Double Exec
+				-Test case for runnning sort.c twice using Exec().
+
+Option 7	: Matmult - Double Fork
+				-Test case for runnning matmult twice using Fork().
+				-matmult.c file has been copied and made as two funtions - matmult1()  and matmult2() and both are forked.
+
+Option 8	: Sort - Double Fork
+				-Test case for runnning sort twice using Fork().
+				-sort.c file has been copied and made as two funtions - sortTest1()  and sortTestt2() and both are forked.
+
+>>PART 2 :	
+
+		-> Set NumPhysPages to 32
+		-> Other procedures are same as PART 1.
+		
+TO TEST PART 3:
+===============
+
+		-> Compile all files from network and test directory.
+		-> Run the files from the network directory.
+		-> After running test cases 1,8 and 12, restart the server again, since the maximum number of locks/CVs/MVs would have reached. 
+We have created testLock, testLock2, testCV,testMV and mvValue to participate in all the test. 
+
+Command to run server : 
+--------------------
+nachos -m 0 -server
+--------------------
+
+Command to run client(test cases) :
+------------------------------------------------------
+nachos -m 1 -client ../test/testcasesForProject3part3
+------------------------------------------------------
+
+
+Option 1	: Creating maximum locks(>1000)
+				-We have set the maximum limit for the locks to be 1000 each. 
+				-This test case tries to create locks more than 1000 and shows that it is impossible to create locks more than 1000
+				-This test case also ensures that creating locks functionality is working well.
+			
+Option 2	: Creating lock with invalid length (500)
+				-We have set the maximum length of the lock variable name to be 50.
+				-This test case ensures that when the name of the lock is more than 50 it is notified to the user
+			
+Option 3  	: Creating lock with negative index (-1)
+				-This test case ensures that when the index of the lock is negative it is notified to the user
+			
+Option 4  	: Destroying a created lock
+				-This test case ensures the functionality of destroying the already existing lock. 
+				-If the current thread is the only execution stream using that lock it will be destroyed immediately or it will wait till all the threads uses it and disallows any thread to add to the wait queue of the lock by setting istobedeleted value to be true
+
+Option 5  	: Acquiring and releasing a lock
+				- This test is for acquiring and releasing the lock. 
+				- We tried to acquire and release locks with correct lockid.
+				- LockIds are passed as arguments.
+			
+Option 6  	: Acquiring and releasing an invalid lock
+				- This test is for acquiring and releasing the lock with invalid arguments. 
+				- We are trying to acquire and release locks with incorrect lockid.
+				- LockIds are passed as arguments.
+			
+Option 7	: Acquiring and releasing a destroyed lock
+				- This test is for acquiring and releasing the destroyed lock. 
+				- We are trying to acquire and release locks which is no more available.
+				- LockIds are passed as arguments.
+
+Option 8	: Creating maximum CVs(>1000)
+				-We have set the maximum limit for the CVs to be 1000 each. 
+				-This test case tries to create CVs more than 1000 and shows that it is impossible to create CVs more than 1000
+				-This test case also ensures that creating CVs functionality is working well.
+			
+Option 9	: Creating CV with invalid length (500)
+				-We have set the maximum length of the CV variable name to be 50.
+				-This test case ensures that when the name of the CV is more than 50 it is notified to the user
+			
+Option 10  	: Creating CV with negative index (-1)
+				-This test case ensures that when the index of the CV is negative it is notified to the user
+			
+Option 11  	: Destroying a created CV
+				-This test case ensures the functionality of destroying the already existing CV. 
+				-If the current thread is the only execution stream using that CV it will be destroyed immediately or it will wait till all the threads uses it and disallows any thread to add to the wait queue of the CV by setting istobedeleted value to be true
+
+Option 12	: Creating maximum MVs(>1000)
+				-We have set the maximum limit for the MVs to be 1000 each. 
+				-This test case tries to create MVs more than 1000 and shows that it is impossible to create MVs more than 1000
+				-This test case also ensures that creating MVs functionality is working well.
+			
+Option 13	: Creating MV with invalid length (500)
+				-We have set the maximum length of the MV variable name to be 50.
+				-This test case ensures that when the name of the MV is more than 50 it is notified to the user
+			
+Option 14  	: Creating lock with negative index (-1)
+				-This test case ensures that when the index of the MV is negative it is notified to the user
+	
+Option 15	: Setting and getting MV value
+				-We receive input from the user using scan() syscall we implemented in project 2 and set the MV value
+				-Then we get the previously set value and print it
+				-This test case is to ensure that getMV() and setMV works.
+				
+Option 16  	: Destroying a created MV
+				-This test case ensures the functionality of destroying the already existing MV. 
+				-If the current thread is the only execution stream using that lock it will be destroyed immediately or it will wait till all the threads uses it and disallows any thread to add to the wait queue of the MV by setting istobedeleted value to be true
+
+Option 17	: Setting value for a destroyed MV
+				- This test is for setting value for destroyed MV. 
+				- We are trying to set a value for MV which is no more available.
+				- MVId is passed as an argument and an error is notified to the user.
+
+
+==============================================================================================================
+NOTE : 
+=======
+
+	*To run the below two test cases, Close the existing server connection and restart it
+									  ------------------------------------
+		
+		-> Testcase for Wait and Signal :
+		
+			Command to run server : 
+				--------------------
+				nachos -m 0 -server
+				--------------------
+
+				Command to run client(test cases) instances :
+				------------------------------------------------------
+				nachos -m 1 -client ../test/wait
+				nachos -m 2 -client ../test/signal
+				-------------------------------------------------------
+	
+		
+		-> Testcase for Wait and Broadcast :
+			Command to run server : 
+				--------------------
+				nachos -m 0 -server
+				--------------------
+
+				Command to run client(test cases) instances :
+				------------------------------------------------------
+				nachos -m 1 -client ../test/wait
+				nachos -m 2 -client ../test/wait
+				nachos -m 3 -client ../test/broadcast
+				-------------------------------------------------------
+		
+		-> we implemented testcases for wait, signal and broadcast individually in wait.c, signal.c and broadcast.c
+
+
+========================================================================================================================================================= 
+
+ + Test Outputs
+ 
+PART 1&2:
+=========
+
+Test output for Option 1	: Matmult - Single Exec
+
+Enter your choice : 1
+
+EXEC : PROCESS 1 CREATED
+EXIT : THREAD FINISHED EXECUTION
+EXIT : THREAD'S END VALUE - 7220
+EXIT : THREAD FINISHED EXECUTIONNo threads ready or runnable, and no pending interrupts.
+
+----------------------------------------------------------------------------------------
+
+Test output for Option 2	: Sort - Single Exec
+
+Enter your choice : 2
+
+EXEC : PROCESS 1 CREATED
+EXIT : THREAD FINISHED EXECUTION
+EXIT : THREAD'S END VALUE - 1023
+EXIT : THREAD FINISHED EXECUTIONNo threads ready or runnable, and no pending interrupts.
+
+----------------------------------------------------------------------------------------
+
+Test output for Option 3	: Matmult - Single Fork
+
+Enter your choice : 3
+
+FORK : THREAD FORKED FOR PROCESS 0,FORKED THREAD ID : 1
+EXIT : THREAD FINISHED EXECUTION
+EXIT : THREAD'S END VALUE - 7220
+EXIT : THREAD FINISHED EXECUTIONNo threads ready or runnable, and no pending interrupts.
+
+-----------------------------------------------------------------------------------------
+
+Test output for Option 4	: Sort - Single Fork
+
+Enter your choice : 4
+
+FORK : THREAD FORKED FOR PROCESS 0,FORKED THREAD ID : 1
+EXIT : THREAD FINISHED EXECUTION
+EXIT : THREAD'S END VALUE - 1023
+EXIT : THREAD FINISHED EXECUTIONNo threads ready or runnable, and no pending interrupts.
+
+-----------------------------------------------------------------------------------------
+
+Test output for Option 5	: Matmult - Double Exec
+
+Enter your choice : 5
+
+EXEC : PROCESS 1 CREATED
+EXEC : PROCESS 2 CREATED
+EXIT : THREAD FINISHED EXECUTION
+EXIT : THREAD'S END VALUE - 7220
+EXIT : THREAD FINISHED EXECUTION
+EXIT : THREAD'S END VALUE - 7220
+EXIT : THREAD FINISHED EXECUTIONNo threads ready or runnable, and no pending interrupts.
+
+-----------------------------------------------------------------------------------------
+
+Test output for Option 6	: Sort - Double Exec
+
+Enter your choice : 6
+
+EXEC : PROCESS 1 CREATED
+EXEC : PROCESS 2 CREATED
+EXIT : THREAD FINISHED EXECUTION
+EXIT : THREAD'S END VALUE - 1023
+EXIT : THREAD FINISHED EXECUTION
+EXIT : THREAD'S END VALUE - 1023
+EXIT : THREAD FINISHED EXECUTIONNo threads ready or runnable, and no pending interrupts.
+
+------------------------------------------------------------------------------------------
+
+Test output for Option 7	: Matmult - Double Fork
+
+FORK : THREAD FORKED FOR PROCESS 0,FORKED THREAD ID : 1
+FORK : THREAD FORKED FOR PROCESS 0,FORKED THREAD ID : 2
+EXIT : THREAD FINISHED EXECUTION
+EXIT : THREAD'S END VALUE - 7220
+EXIT : THREAD FINISHED EXECUTION
+EXIT : THREAD'S END VALUE - 7220
+EXIT : THREAD FINISHED EXECUTIONNo threads ready or runnable, and no pending interrupts.
+
+-------------------------------------------------------------------------------------------
+
+Test output for Option 8	: Sort - Double Fork
+
+Enter your choice : 8
+
+FORK : THREAD FORKED FOR PROCESS 0,FORKED THREAD ID : 1
+FORK : THREAD FORKED FOR PROCESS 0,FORKED THREAD ID : 2
+EXIT : THREAD FINISHED EXECUTION
+EXIT : THREAD'S END VALUE - 1023
+EXIT : THREAD FINISHED EXECUTION
+EXIT : THREAD'S END VALUE - 1023
+EXIT : THREAD FINISHED EXECUTIONNo threads ready or runnable, and no pending interrupts.
+
+--------------------------------------------------------------------------------------------
+
+PART 3:
+=======
+  
+1) Test output for Option 1  : Creating maximum locks(>1000)
+
+CREATELOCK : LOCK 996 CREATED
+CREATELOCK : LOCK 997 CREATED
+CREATELOCK : LOCK 998 CREATED
+CREATELOCK : LOCK 999 CREATED
+CREATELOCK : ERROR CREATING LOCKMachine halting!
+
+----------------------------------------------------------------------
+
+2)Test output for option 2  : Creating lock with invalid length (500)
+
+
+CREATELOCK : INVALID LOCK LENGTHMachine halting!
+
+
+------------------------------------------------------------------------
+
+3)Test output for Option 3 : Creating lock with negative index(-1)
+
+Your choice :  3
+
+CREATELOCK : INVALID LOCK VIRTUAL ADDRESSMachine halting!
+
+-------------------------------------------------------------------------
+
+4)Test output for Option 4  : Destroying a created lock
+
+Your choice :  4
+
+CREATELOCK : LOCK 0 CREATED
+LOCK IS DESTROYED
+EXIT : THREAD FINISHED EXECUTION -1Machine halting!
+
+-----------------------------------------------------------
+
+5)Test output for Option 5  : Acquiring and releasing a lock
+
+Your choice :  5
+
+CREATELOCK : LOCK 0 CREATED
+LOCK ACQUIRE : THREAD 0 FROM PROCESS 0 ACQUIRED LOCK 0
+LOCK RELEASE : THREAD 0 FROM PROCESS 0 RELEASED LOCK 0Machine halting!
+
+-------------------------------------------------------------
+
+6)Test output for Option 6  : Acquiring and releasing an invalid lock
+
+Your choice :  6
+
+CREATELOCK : LOCK 0 CREATED
+LOCK ACQUIRE : INVALID LOCK NUMBERMachine halting!
+
+-------------------------------------------------------------
+
+7)Test output for Option 7  : Acquiring and releasing a destroyed lock
+
+Your choice :  7
+
+CREATELOCK : LOCK 0 CREATED
+LOCK DESTROY : LOCK 0 DESTROYED
+LOCK AQCUIRE : THE LOCK YOU ARE TRYING TO ACQUIRE IS NO LONGER ALIVEMachine halting!
+
+-------------------------------------------------------------
+
+8)Test output for Option 8  : Creating maximum CVs(>1000)
+
+Your choice :  8
+
+CREATECV : CV 996 CREATED
+CREATECV : CV 997 CREATED
+CREATECV : CV 998 CREATED
+CREATECV : CV 999 CREATED
+CREATECV : ERROR CREATING CVMachine halting!
+
+-----------------------------------------------------------
+
+9)Test output for option 9  : Creating CV with invalid length (500)
+
+Your choice :  9
+
+CREATECV : INVALID CV LENGTHMachine halting!
+
+------------------------------------------------------------
+
+10)Test output for option 10  : Creating CV with  negative index (-1)
+
+Your choice :  10
+
+CREATECV : INVALID CV VIRTUAL ADDRESSMachine halting!
+
+------------------------------------------------------------
+
+11)Test output for Option 11  : Destroying a created CV
+
+Your choice :  11
+
+CREATECV : CV 0 CREATED
+CV IS DESTROYED
+EXIT : THREAD FINISHED EXECUTION -1Machine halting!
+
+-------------------------------------------------------------
+
+12)Test output for Option 8  : Creating maximum MVs(>1000)
+
+Your choice :  12
+
+CREATEMV : MV 997 CREATED
+CREATEMV : MV 998 CREATED
+CREATEMV : MV 999 CREATED
+CREATEMV : ERROR CREATING MVMachine halting!
+
+--------------------------------------------------------------
+
+13)Test output for option 13  : Creating MV with invalid length (500)
+
+Your choice :  13
+
+CREATEMV : INVALID MV LENGTHMachine halting!
+
+--------------------------------------------------------------
+
+14)Test output for option 14  : Creating MV with  negative index (-1)
+
+Your choice :  14
+
+CREATEMV : INVALID MV VIRTUAL ADDRESSMachine halting!
+
+--------------------------------------------------------------
+
+15)Test output for option 15  : Setting and getting MV
+
+Your choice :  15
+
+CREATELOCK : LOCK 0 CREATED
+LOCK ACQUIRE : ACQUIRED LOCK 0
+CREATEMV : MV 0 CREATED
+MV created to initial value : 10
+Enter a number to set MV :6
+
+The value set for MV : 6
+EXIT : THREAD FINISHED EXECUTION -1Machine halting!
+
+----------------------------------------------------------------
+
+16)Test output for Option 16  : Destroying a created MV
+
+Your choice :  16
+
+CREATEMV : MV 1 CREATED
+MV IS DESTROYED
+EXIT : THREAD FINISHED EXECUTION -1Machine halting!
+
+-----------------------------------------------------------------
+
+17)Test output for Option 17  : Setting a value for a destroyed MV
+
+Your choice :  17
+
+CREATEMV : MV 1 CREATED
+MV IS DESTROYED
+SETMV : ERROR SETTING MVMachine halting!
+
+-----------------------------------------------------------------
+
+
+

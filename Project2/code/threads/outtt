@@ -1,0 +1,598 @@
+
+Choose an option:
+
+1.You have selected the simulation
+2.You have selected the test cases for part1
+3.Customers always take the shortest line, but no 2 customers ever choose the same shortest line at the same time
+4.Test case1 : Customers wait for items to be restocked - when told by the Department Salesman 
+5.Test case2 : Goods Loader don't try to restock an item on a shelf when a Customer is trying to take an item off the shelf
+6.Test Case4: Cashiers are sent on break by the Manager randomly.
+7.Test Case5: Cashier scans the items till the trolly is empty
+8.Test Case6: Customers do not leave until they are given their receipt by the Cashier. The Cashier does not start on another customer until they know that the last Customer has left their area
+9.Test Case7: Managers get Cashiers off their break when lines have 3, or more, Customers 
+10.Test Case8: Total sales never suffers from a race condition 
+11.Test Case9: Managers can only talk to one Cashier, or one Customer, at a time 
+12.Only one Goods Loader enters the stock room at a time.
+
+You have selected the simulation
+Enter the count of Departments(3 to 5)No of departments: 3
+Enter the count of Salesmen(1 to 3)
+Enter the count of Customers(>30)
+No of customers: 5
+Enter the count of Goodsloaders(3 to 5)
+Enter the number of cashiers
+ processing customer information0
+customer privilege1
+done with privileging
+
+ processing customer information1
+customer privilege1
+done with privileging
+
+ processing customer information2
+customer privilege0
+done with privileging
+
+ processing customer information3
+customer privilege1
+done with privileging
+
+ processing customer information4
+customer privilege0
+done with privileging
+
+Customer0
+
+	Item7->Quantity8
+	Item2->Quantity10
+	Item1->Quantity10
+	Item15->Quantity7
+	Item10->Quantity10
+Privileged Customer
+Customer1
+
+	Item10->Quantity6
+	Item20->Quantity9
+	Item26->Quantity4
+	Item2->Quantity1
+	Item19->Quantity4
+	Item22->Quantity8
+	Item4->Quantity9
+	Item25->Quantity7
+	Item1->Quantity10
+	Item13->Quantity6
+Privileged Customer
+Customer2
+
+	Item4->Quantity9
+Unprevileged Customer
+Customer3
+
+	Item29->Quantity10
+	Item27->Quantity3
+	Item2->Quantity6
+	Item13->Quantity6
+Privileged Customer
+Customer4
+
+	Item20->Quantity4
+	Item2->Quantity10
+	Item1->Quantity10
+	Item21->Quantity2
+	Item16->Quantity1
+	Item29->Quantity5
+	Item19->Quantity2
+Unprevileged Customer
+Privileged Customer [0] enters the SuperMarket
+Privileged Customer [0] wants to buy [5] no. of items
+Privileged Customer [0] has a trolley for shopping
+Privileged Customer [0] enters the department0 for item7
+Privileged Customer [1] enters the SuperMarket
+Privileged Customer [1] wants to buy [10] no. of items
+Privileged Customer [1] has a trolley for shopping
+Privileged Customer [1] enters the department1 for item10
+Customer [2] enters the SuperMarket
+Customer [2] wants to buy [1] no. of items
+Customer [2] has a trolley for shopping
+Customer [2] enters the department0 for item4
+Privileged Customer [3] enters the SuperMarket
+Privileged Customer [3] wants to buy [4] no. of items
+Privileged Customer [3] has a trolley for shopping
+Privileged Customer [3] enters the department2 for item29
+Customer [4] enters the SuperMarket
+Customer [4] wants to buy [7] no. of items
+Customer [4] has a trolley for shopping
+Customer [4] enters the department2 for item20
+Goodsloader [0] is waiting for orders to restock
+Goodsloader [1] is waiting for orders to restock
+Goodsloader [2] is waiting for orders to restock
+Manager emptied Counter [0] drawer.
+Manager has total sale of $[0]
+Cashier 0 Status : 0
+Manager emptied Counter [1] drawer.
+Manager has total sale of $[0]
+Cashier 1 Status : 0
+Manager emptied Counter [2] drawer.
+Manager has total sale of $[0]
+Cashier 2 Status : 0
+DepartmentSalesman [0] welcomes Privileged Customer [0] to Department [0]
+DepartmentSalesman [0] welcomes Privileged Customer [1] to Department [1]
+DepartmentSalesman [1] welcomes Customer [2] to Department [0]
+DepartmentSalesman [0] welcomes Privileged Customer [3] to Department [2]
+DepartmentSalesman [1] welcomes Customer [4] to Department [2]
+Privileged Customer [0] is interacting with DepartmentSalesman[0] of Department[0]
+Privileged Customer [1] is interacting with DepartmentSalesman[0] of Department[1]
+Customer [2] is interacting with DepartmentSalesman[1] of Department[0]
+Customer [2] is not able to find item4 and is searching for DepartmentSalesman
+Privileged Customer [3] is interacting with DepartmentSalesman[0] of Department[2]
+Customer [4] is interacting with DepartmentSalesman[1] of Department[2]
+Customer [4] has found item20 and placed [4] in the trolly
+Customer [4] enters the department0 for item2
+Customer [4] gets in line for the department [0]
+Privileged Customer [0] is asking assistance from DepartmentSalesman [1]
+Privileged Customer [0] has received assistance about restocking of item7 from DepartmentSalesman [1]
+Privileged Customer [1] is asking assistance from DepartmentSalesman [0]
+Privileged Customer [1] has received assistance about restocking of item10 from DepartmentSalesman [0]
+Customer [2] is asking assistance from DepartmentSalesman [2]
+Customer [2] has received assistance about restocking of item4 from DepartmentSalesman [2]
+DepartmentSalesman [0] welcomes Customer [4] to Department [0]
+DepartmentSalesman [1] is informed by Privileged Customer [0] that item7 is out of stock
+DepartmentSalesman [1] informs the Goodsloader [2] that item7 is out of stock
+DepartmentSalesman [0] is informed by Privileged Customer [1] that item10 is out of stock
+DepartmentSalesman [0] informs the Goodsloader [1] that item10 is out of stock
+DepartmentSalesman [2] is informed by Customer [2] that item4 is out of stock
+DepartmentSalesman [2] informs the Goodsloader [0] that item4 is out of stock
+Customer [4] is interacting with DepartmentSalesman[0] of Department[0]
+Customer [4] is not able to find item2 and is searching for DepartmentSalesman
+Goodsloader [2] is informed by DepartmentSalesman [1] of department [0] to restock item7
+Goodsloader [2] is in the StockRoom and got item7
+Goodsloader [2] restocked item7 in Department [0]
+Goodsloader [2] leaves StockRoom
+Goodsloader [1] is informed by DepartmentSalesman [0] of department [1] to restock item10
+Goodsloader [1] is in the StockRoom and got item10
+Goodsloader [1] restocked item10 in Department [1]
+Goodsloader [1] leaves StockRoom
+Goodsloader [0] is informed by DepartmentSalesman [2] of department [0] to restock item4
+Goodsloader [0] is in the StockRoom and got item4
+Goodsloader [0] restocked item4 in Department [0]
+Goodsloader [0] leaves StockRoom
+DepartmentSalesman [0] is informed by the Goodsloader [0] that item0 is restocked
+DepartmentSalesman [1] is informed by the Goodsloader [0] that item0 is restocked
+DepartmentSalesman [0] is informed by the Goodsloader [0] that item0 is restocked
+DepartmentSalesman [1] informs the waiting customers that item7 is restocked
+DepartmentSalesman [0] informs the waiting customers that item10 is restocked
+DepartmentSalesman [2] informs the waiting customers that item4 is restocked
+Goodsloader [2] is waiting for orders to restock
+Privileged Customer [0] has found item7 and placed [8] in the trolly
+Privileged Customer [0] enters the department0 for item2
+Privileged Customer [0] gets in line for the department [0]
+Goodsloader [1] is waiting for orders to restock
+Privileged Customer [1] has found item10 and placed [6] in the trolly
+Privileged Customer [1] enters the department2 for item20
+Privileged Customer [1] gets in line for the department [2]
+Goodsloader [0] is waiting for orders to restock
+Customer [2] has found item4 and placed [9] in the trolly
+Customer [2] has finished shopping and is looking for the Cashier
+Customer [2] chose Cashier [0] with line of length [0]
+Cashier [0] got [4] from trolly of Customer [2].
+Cashier [0] tells Customer [2] total cost is $[9].
+Cashier [0] gave the receipt to Customer [2] and tells him to leave.
+Cashier [0] got money $[9] from Customer [2].
+Customer [4] is asking assistance from DepartmentSalesman [2]
+Customer [4] has received assistance about restocking of item2 from DepartmentSalesman [2]
+Customer [2] pays $[9] to Cashier [0] and is now waiting for receipt
+Customer [2] is leaving the trolley
+Customer2 exits the store
+DepartmentSalesman [1] welcomes Privileged Customer [0] to Department [0]
+DepartmentSalesman [2] is informed by Customer [4] that item2 is out of stock
+DepartmentSalesman [2] informs the Goodsloader [0] that item2 is out of stock
+Privileged Customer [0] is interacting with DepartmentSalesman[1] of Department[0]
+Goodsloader [0] is informed by DepartmentSalesman [2] of department [0] to restock item2
+Goodsloader [0] is in the StockRoom and got item2
+Goodsloader [0] restocked item2 in Department [0]
+Goodsloader [0] leaves StockRoom
+DepartmentSalesman [0] is informed by the Goodsloader [2] that item7 is restocked
+Privileged Customer [0] is asking assistance from DepartmentSalesman [2]
+Privileged Customer [0] has received assistance about restocking of item2 from DepartmentSalesman [2]
+DepartmentSalesman [1] informs the waiting customers that item2 is restocked
+DepartmentSalesman [2] is informed by Privileged Customer [0] that item2 is out of stock
+DepartmentSalesman [2] informs the Goodsloader [1] that item2 is out of stock
+Goodsloader [0] replaced the trolley
+Goodsloader [0] is waiting for orders to restock
+Customer [4] has found item2 and placed [10] in the trolly
+Customer [4] enters the department0 for item1
+Privileged Customer [0] is not able to find item2 and is searching for DepartmentSalesman
+Goodsloader [1] is informed by DepartmentSalesman [2] of department [0] to restock item2
+Goodsloader [1] is in the StockRoom and got item2
+Goodsloader [1] restocked item2 in Department [0]
+Goodsloader [1] leaves StockRoom
+DepartmentSalesman [0] is informed by the Goodsloader [0] that item4 is restocked
+DepartmentSalesman [1] welcomes Customer [4] to Department [0]
+Customer [4] is interacting with DepartmentSalesman[1] of Department[0]
+Customer [4] is not able to find item1 and is searching for DepartmentSalesman
+DepartmentSalesman [2] informs the waiting customers that item2 is restocked
+Goodsloader [1] is waiting for orders to restock
+Privileged Customer [0] is asking assistance from DepartmentSalesman [1]
+Privileged Customer [0] has received assistance about restocking of item2 from DepartmentSalesman [1]
+DepartmentSalesman [1] is informed by Privileged Customer [0] that item2 is out of stock
+DepartmentSalesman [1] informs the Goodsloader [0] that item2 is out of stock
+Goodsloader [0] is informed by DepartmentSalesman [1] of department [0] to restock item2
+Goodsloader [0] is in the StockRoom and got item2
+Goodsloader [0] restocked item2 in Department [0]
+Goodsloader [0] leaves StockRoom
+Customer [4] is asking assistance from DepartmentSalesman [2]
+Customer [4] has received assistance about restocking of item1 from DepartmentSalesman [2]
+DepartmentSalesman [2] is informed by Customer [4] that item1 is out of stock
+DepartmentSalesman [2] informs the Goodsloader [1] that item1 is out of stock
+DepartmentSalesman [0] is informed by the Goodsloader [0] that item2 is restocked
+DepartmentSalesman [1] informs the waiting customers that item2 is restocked
+Goodsloader [1] is informed by DepartmentSalesman [2] of department [0] to restock item1
+Goodsloader [1] is in the StockRoom and got item1
+Goodsloader [1] restocked item1 in Department [0]
+Goodsloader [1] leaves StockRoom
+Goodsloader [0] is waiting for orders to restock
+Privileged Customer [0] has found item2 and placed [10] in the trolly
+Privileged Customer [0] enters the department0 for item1
+Privileged Customer [0] gets in line for the department [0]
+DepartmentSalesman [0] is informed by the Goodsloader [0] that item2 is restocked
+DepartmentSalesman [2] welcomes Privileged Customer [0] to Department [0]
+DepartmentSalesman [1] informs the waiting customers that item1 is restocked
+Privileged Customer [0] is interacting with DepartmentSalesman[2] of Department[0]
+Privileged Customer [0] has found item1 and placed [10] in the trolly
+Privileged Customer [0] enters the department1 for item15
+Goodsloader [1] is waiting for orders to restock
+Customer [4] is not able to find item1 and is searching for DepartmentSalesman
+Customer [4] is asking assistance from DepartmentSalesman [2]
+Customer [4] has received assistance about restocking of item1 from DepartmentSalesman [2]
+DepartmentSalesman [2] is informed by Customer [4] that item1 is out of stock
+DepartmentSalesman [2] informs the Goodsloader [0] that item1 is out of stock
+DepartmentSalesman [0] welcomes Privileged Customer [0] to Department [1]
+Privileged Customer [0] is interacting with DepartmentSalesman[0] of Department[1]
+Goodsloader [0] is informed by DepartmentSalesman [2] of department [0] to restock item1
+Goodsloader [0] is in the StockRoom and got item1
+Goodsloader [0] restocked item1 in Department [0]
+Goodsloader [0] leaves StockRoom
+Privileged Customer [0] is asking assistance from DepartmentSalesman [0]
+Privileged Customer [0] has received assistance about restocking of item15 from DepartmentSalesman [0]
+DepartmentSalesman [0] is informed by the Goodsloader [1] that item2 is restocked
+DepartmentSalesman [0] is informed by Privileged Customer [0] that item15 is out of stock
+DepartmentSalesman [0] informs the Goodsloader [1] that item15 is out of stock
+DepartmentSalesman [2] informs the waiting customers that item1 is restocked
+Goodsloader [0] is waiting for orders to restock
+Customer [4] has found item1 and placed [10] in the trolly
+Customer [4] enters the department2 for item21
+Customer [4] gets in line for the department [2]
+Goodsloader [1] is informed by DepartmentSalesman [0] of department [1] to restock item15
+Goodsloader [1] is in the StockRoom and got item15
+Goodsloader [1] restocked item15 in Department [1]
+Goodsloader [1] leaves StockRoom
+DepartmentSalesman [1] is informed by the Goodsloader [1] that item10 is restocked
+Privileged Customer [3] is asking assistance from DepartmentSalesman [1]
+Privileged Customer [3] has received assistance about restocking of item29 from DepartmentSalesman [1]
+DepartmentSalesman [0] welcomes Privileged Customer [1] to Department [2]
+DepartmentSalesman [2] welcomes Customer [4] to Department [2]
+DepartmentSalesman [1] is informed by Privileged Customer [3] that item29 is out of stock
+DepartmentSalesman [1] informs the Goodsloader [0] that item29 is out of stock
+DepartmentSalesman [0] informs the waiting customers that item15 is restocked
+Privileged Customer [1] is interacting with DepartmentSalesman[0] of Department[2]
+Privileged Customer [1] is not able to find item20 and is searching for DepartmentSalesman
+Customer [4] is interacting with DepartmentSalesman[2] of Department[2]
+Customer [4] has found item21 and placed [2] in the trolly
+Customer [4] enters the department1 for item16
+Goodsloader [1] is waiting for orders to restock
+Privileged Customer [0] has found item15 and placed [7] in the trolly
+Privileged Customer [0] enters the department1 for item10
+Privileged Customer [1] is asking assistance from DepartmentSalesman [0]
+Privileged Customer [1] has received assistance about restocking of item20 from DepartmentSalesman [0]
+Goodsloader [0] is informed by DepartmentSalesman [1] of department [2] to restock item29
+Goodsloader [0] is in the StockRoom and got item29
+Goodsloader [0] restocked item29 in Department [2]
+Goodsloader [0] leaves StockRoom
+DepartmentSalesman [0] is informed by Privileged Customer [1] that item20 is out of stock
+DepartmentSalesman [0] informs the Goodsloader [1] that item20 is out of stock
+DepartmentSalesman [0] welcomes Customer [4] to Department [1]
+DepartmentSalesman [2] is informed by the Goodsloader [0] that item0 is restocked
+DepartmentSalesman [1] welcomes Privileged Customer [0] to Department [1]
+Customer [4] is interacting with DepartmentSalesman[0] of Department[1]
+Customer [4] has found item16 and placed [1] in the trolly
+Customer [4] enters the department2 for item29
+Privileged Customer [0] is interacting with DepartmentSalesman[1] of Department[1]
+DepartmentSalesman [1] informs the waiting customers that item29 is restocked
+Goodsloader [1] is informed by DepartmentSalesman [0] of department [2] to restock item20
+Goodsloader [1] is in the StockRoom and got item20
+Goodsloader [1] restocked item20 in Department [2]
+Goodsloader [1] leaves StockRoom
+Privileged Customer [0] is asking assistance from DepartmentSalesman [0]
+Privileged Customer [0] has received assistance about restocking of item10 from DepartmentSalesman [0]
+Goodsloader [0] is waiting for orders to restock
+Privileged Customer [3] has found item29 and placed [10] in the trolly
+Privileged Customer [3] enters the department2 for item27
+Privileged Customer [3] gets in line for the department [2]
+DepartmentSalesman [0] is informed by Privileged Customer [0] that item10 is out of stock
+DepartmentSalesman [0] informs the Goodsloader [2] that item10 is out of stock
+DepartmentSalesman [2] welcomes Customer [4] to Department [2]
+DepartmentSalesman [2] is informed by the Goodsloader [0] that item29 is restocked
+Customer [4] is interacting with DepartmentSalesman[2] of Department[2]
+Customer [4] is not able to find item29 and is searching for DepartmentSalesman
+DepartmentSalesman [0] welcomes Privileged Customer [3] to Department [2]
+DepartmentSalesman [1] informs the waiting customers that item20 is restocked
+Privileged Customer [3] is interacting with DepartmentSalesman[0] of Department[2]
+Privileged Customer [3] has found item27 and placed [3] in the trolly
+Privileged Customer [3] enters the department0 for item2
+Goodsloader [2] is informed by DepartmentSalesman [0] of department [1] to restock item10
+Goodsloader [2] is in the StockRoom and got item10
+Goodsloader [2] restocked item10 in Department [1]
+Goodsloader [2] leaves StockRoom
+Customer [4] is asking assistance from DepartmentSalesman [2]
+Customer [4] has received assistance about restocking of item29 from DepartmentSalesman [2]
+Goodsloader [1] is waiting for orders to restock
+Privileged Customer [1] has found item20 and placed [9] in the trolly
+Privileged Customer [1] enters the department2 for item26
+Privileged Customer [1] gets in line for the department [2]
+DepartmentSalesman [1] is informed by the Goodsloader [1] that item15 is restocked
+DepartmentSalesman [2] is informed by Customer [4] that item29 is out of stock
+DepartmentSalesman [2] informs the Goodsloader [0] that item29 is out of stock
+DepartmentSalesman [0] welcomes Privileged Customer [1] to Department [2]
+DepartmentSalesman [0] welcomes Privileged Customer [3] to Department [0]
+DepartmentSalesman [0] informs the waiting customers that item10 is restocked
+Privileged Customer [1] is interacting with DepartmentSalesman[0] of Department[2]
+Privileged Customer [1] has found item26 and placed [4] in the trolly
+Privileged Customer [1] enters the department0 for item2
+Privileged Customer [3] is interacting with DepartmentSalesman[0] of Department[0]
+Goodsloader [2] is waiting for orders to restock
+Privileged Customer [0] has found item10 and placed [10] in the trolly
+Privileged Customer [0] has finished shopping and is looking for the Cashier
+Privileged Customer [0] chose Cashier [0] with line of length [0]
+Goodsloader [0] is informed by DepartmentSalesman [2] of department [2] to restock item29
+Goodsloader [0] is in the StockRoom and got item29
+Goodsloader [0] restocked item29 in Department [2]
+Goodsloader [0] leaves StockRoom
+DepartmentSalesman [2] is informed by the Goodsloader [0] that item0 is restocked
+Cashier [0] got [7] from trolly of Privileged Customer [0].
+Cashier [0] got [2] from trolly of Privileged Customer [0].
+Cashier [0] got [1] from trolly of Privileged Customer [0].
+Cashier [0] got [15] from trolly of Privileged Customer [0].
+Cashier [0] got [10] from trolly of Privileged Customer [0].
+Cashier [0] tells Privileged Customer [0] total cost is $[45].
+Cashier [0] gave the receipt to Privileged Customer [0] and tells him to leave.
+Cashier [0] got money $[45] from Privileged Customer [0].
+Privileged Customer [3] is asking assistance from DepartmentSalesman [0]
+Privileged Customer [3] has received assistance about restocking of item2 from DepartmentSalesman [0]
+Privileged Customer [0] pays $[45] to Cashier [0] and is now waiting for receipt
+Privileged Customer [0] is leaving the trolley
+Customer0 exits the store
+DepartmentSalesman [0] informs the waiting customers that item29 is restocked
+DepartmentSalesman [1] welcomes Privileged Customer [1] to Department [0]
+DepartmentSalesman [0] is informed by Privileged Customer [3] that item2 is out of stock
+DepartmentSalesman [0] informs the Goodsloader [1] that item2 is out of stock
+Goodsloader [0] replaced the trolley
+Goodsloader [0] is waiting for orders to restock
+Customer [4] has found item29 and placed [5] in the trolly
+Customer [4] enters the department1 for item19
+Privileged Customer [1] is interacting with DepartmentSalesman[1] of Department[0]
+DepartmentSalesman [0] welcomes Customer [4] to Department [1]
+Goodsloader [1] is informed by DepartmentSalesman [0] of department [0] to restock item2
+Goodsloader [1] is in the StockRoom and got item2
+Goodsloader [1] restocked item2 in Department [0]
+Goodsloader [1] leaves StockRoom
+DepartmentSalesman [0] is informed by the Goodsloader [1] that item1 is restocked
+Customer [4] is interacting with DepartmentSalesman[0] of Department[1]
+Customer [4] has found item19 and placed [2] in the trolly
+Customer [4] has finished shopping and is looking for the Cashier
+Customer [4] chose Cashier [0] with line of length [0]
+Cashier [0] got [20] from trolly of Customer [4].
+Cashier [0] got [2] from trolly of Customer [4].
+Cashier [0] got [1] from trolly of Customer [4].
+Cashier [0] got [21] from trolly of Customer [4].
+Cashier [0] got [16] from trolly of Customer [4].
+Cashier [0] got [29] from trolly of Customer [4].
+Cashier [0] got [19] from trolly of Customer [4].
+Cashier [0] tells Customer [4] total cost is $[34].
+Cashier [0] gave the receipt to Customer [4] and tells him to leave.
+Cashier [0] got money $[34] from Customer [4].
+Privileged Customer [1] is asking assistance from DepartmentSalesman [0]
+Privileged Customer [1] has received assistance about restocking of item2 from DepartmentSalesman [0]
+DepartmentSalesman [1] informs the waiting customers that item2 is restocked
+Customer [4] pays $[34] to Cashier [0] and is now waiting for receipt
+Customer [4] is leaving the trolley
+Customer4 exits the store
+DepartmentSalesman [0] is informed by Privileged Customer [1] that item2 is out of stock
+DepartmentSalesman [0] informs the Goodsloader [0] that item2 is out of stock
+Goodsloader [1] replaced the trolley
+Goodsloader [1] is waiting for orders to restock
+Privileged Customer [3] has found item2 and placed [6] in the trolly
+Privileged Customer [3] enters the department1 for item13
+Privileged Customer [1] has found item2 and placed [1] in the trolly
+Privileged Customer [1] enters the department1 for item19
+Goodsloader [0] is informed by DepartmentSalesman [0] of department [0] to restock item2
+Goodsloader [0] is in the StockRoom and got item2
+Goodsloader [0] restocked item2 in Department [0]
+Goodsloader [0] leaves StockRoom
+DepartmentSalesman [0] is informed by the Goodsloader [0] that item0 is restocked
+DepartmentSalesman [0] welcomes Privileged Customer [3] to Department [1]
+DepartmentSalesman [1] welcomes Privileged Customer [1] to Department [1]
+Privileged Customer [3] is interacting with DepartmentSalesman[0] of Department[1]
+DepartmentSalesman [0] informs the waiting customers that item2 is restocked
+Privileged Customer [1] is interacting with DepartmentSalesman[1] of Department[1]
+Privileged Customer [1] is not able to find item19 and is searching for DepartmentSalesman
+Goodsloader [0] is waiting for orders to restock
+Privileged Customer [3] is asking assistance from DepartmentSalesman [0]
+Privileged Customer [3] has received assistance about restocking of item13 from DepartmentSalesman [0]
+Privileged Customer [1] is asking assistance from DepartmentSalesman [2]
+Privileged Customer [1] has received assistance about restocking of item19 from DepartmentSalesman [2]
+DepartmentSalesman [0] is informed by Privileged Customer [3] that item13 is out of stock
+DepartmentSalesman [0] informs the Goodsloader [1] that item13 is out of stock
+DepartmentSalesman [2] is informed by Privileged Customer [1] that item19 is out of stock
+DepartmentSalesman [2] informs the Goodsloader [2] that item19 is out of stock
+Goodsloader [1] is informed by DepartmentSalesman [0] of department [1] to restock item13
+Goodsloader [1] is in the StockRoom and got item13
+Goodsloader [1] restocked item13 in Department [1]
+Goodsloader [1] leaves StockRoom
+Goodsloader [2] is informed by DepartmentSalesman [2] of department [1] to restock item19
+Goodsloader [2] is in the StockRoom and got item19
+Goodsloader [2] restocked item19 in Department [1]
+Goodsloader [2] leaves StockRoom
+DepartmentSalesman [1] is informed by the Goodsloader [2] that item10 is restocked
+DepartmentSalesman [1] is informed by the Goodsloader [0] that item0 is restocked
+DepartmentSalesman [0] informs the waiting customers that item13 is restocked
+DepartmentSalesman [2] informs the waiting customers that item19 is restocked
+Goodsloader [1] is waiting for orders to restock
+Privileged Customer [3] has found item13 and placed [6] in the trolly
+Privileged Customer [3] has finished shopping and is looking for the Cashier
+Privileged Customer [3] chose Cashier [0] with line of length [0]
+Goodsloader [2] is waiting for orders to restock
+Privileged Customer [1] has found item19 and placed [4] in the trolly
+Privileged Customer [1] enters the department2 for item22
+Cashier [0] got [29] from trolly of Privileged Customer [3].
+Cashier [0] got [27] from trolly of Privileged Customer [3].
+Cashier [0] got [2] from trolly of Privileged Customer [3].
+Cashier [0] got [13] from trolly of Privileged Customer [3].
+Cashier [0] tells Privileged Customer [3] total cost is $[25].
+Cashier [0] gave the receipt to Privileged Customer [3] and tells him to leave.
+Cashier [0] got money $[25] from Privileged Customer [3].
+Privileged Customer [3] pays $[25] to Cashier [0] and is now waiting for receipt
+Privileged Customer [3] is leaving the trolley
+Customer3 exits the store
+DepartmentSalesman [0] welcomes Privileged Customer [1] to Department [2]
+Privileged Customer [1] is interacting with DepartmentSalesman[0] of Department[2]
+Privileged Customer [1] is asking assistance from DepartmentSalesman [0]
+Privileged Customer [1] has received assistance about restocking of item22 from DepartmentSalesman [0]
+DepartmentSalesman [0] is informed by Privileged Customer [1] that item22 is out of stock
+DepartmentSalesman [0] informs the Goodsloader [0] that item22 is out of stock
+Goodsloader [0] is informed by DepartmentSalesman [0] of department [2] to restock item22
+Goodsloader [0] is in the StockRoom and got item22
+Goodsloader [0] restocked item22 in Department [2]
+Goodsloader [0] leaves StockRoom
+DepartmentSalesman [2] is informed by the Goodsloader [0] that item29 is restocked
+DepartmentSalesman [0] informs the waiting customers that item22 is restocked
+Goodsloader [0] replaced the trolley
+Goodsloader [0] is waiting for orders to restock
+Privileged Customer [1] has found item22 and placed [8] in the trolly
+Privileged Customer [1] enters the department0 for item4
+DepartmentSalesman [0] welcomes Privileged Customer [1] to Department [0]
+Privileged Customer [1] is interacting with DepartmentSalesman[0] of Department[0]
+Privileged Customer [1] is asking assistance from DepartmentSalesman [0]
+Privileged Customer [1] has received assistance about restocking of item4 from DepartmentSalesman [0]
+DepartmentSalesman [0] is informed by Privileged Customer [1] that item4 is out of stock
+DepartmentSalesman [0] informs the Goodsloader [0] that item4 is out of stock
+Goodsloader [0] is informed by DepartmentSalesman [0] of department [0] to restock item4
+Goodsloader [0] is in the StockRoom and got item4
+Goodsloader [0] restocked item4 in Department [0]
+Goodsloader [0] leaves StockRoom
+DepartmentSalesman [0] is informed by the Goodsloader [0] that item2 is restocked
+DepartmentSalesman [0] informs the waiting customers that item4 is restocked
+Goodsloader [0] is waiting for orders to restock
+Privileged Customer [1] has found item4 and placed [9] in the trolly
+Privileged Customer [1] enters the department2 for item25
+DepartmentSalesman [0] welcomes Privileged Customer [1] to Department [2]
+Privileged Customer [1] is interacting with DepartmentSalesman[0] of Department[2]
+Privileged Customer [1] is asking assistance from DepartmentSalesman [0]
+Privileged Customer [1] has received assistance about restocking of item25 from DepartmentSalesman [0]
+DepartmentSalesman [0] is informed by Privileged Customer [1] that item25 is out of stock
+DepartmentSalesman [0] informs the Goodsloader [0] that item25 is out of stock
+Goodsloader [0] is informed by DepartmentSalesman [0] of department [2] to restock item25
+Goodsloader [0] is in the StockRoom and got item25
+Goodsloader [0] restocked item25 in Department [2]
+Goodsloader [0] leaves StockRoom
+DepartmentSalesman [2] is informed by the Goodsloader [0] that item22 is restocked
+DepartmentSalesman [0] informs the waiting customers that item25 is restocked
+Goodsloader [0] is waiting for orders to restock
+Privileged Customer [1] has found item25 and placed [7] in the trolly
+Privileged Customer [1] enters the department0 for item1
+DepartmentSalesman [0] welcomes Privileged Customer [1] to Department [0]
+Privileged Customer [1] is interacting with DepartmentSalesman[0] of Department[0]
+Privileged Customer [1] is asking assistance from DepartmentSalesman [0]
+Privileged Customer [1] has received assistance about restocking of item1 from DepartmentSalesman [0]
+DepartmentSalesman [0] is informed by Privileged Customer [1] that item1 is out of stock
+DepartmentSalesman [0] informs the Goodsloader [0] that item1 is out of stock
+Goodsloader [0] is informed by DepartmentSalesman [0] of department [0] to restock item1
+Goodsloader [0] is in the StockRoom and got item1
+Goodsloader [0] restocked item1 in Department [0]
+Goodsloader [0] leaves StockRoom
+DepartmentSalesman [0] is informed by the Goodsloader [0] that item4 is restocked
+DepartmentSalesman [0] informs the waiting customers that item1 is restocked
+Goodsloader [0] is waiting for orders to restock
+Privileged Customer [1] has found item1 and placed [10] in the trolly
+Privileged Customer [1] enters the department1 for item13
+DepartmentSalesman [0] welcomes Privileged Customer [1] to Department [1]
+Privileged Customer [1] is interacting with DepartmentSalesman[0] of Department[1]
+Privileged Customer [1] is asking assistance from DepartmentSalesman [0]
+Privileged Customer [1] has received assistance about restocking of item13 from DepartmentSalesman [0]
+DepartmentSalesman [0] is informed by Privileged Customer [1] that item13 is out of stock
+DepartmentSalesman [0] informs the Goodsloader [0] that item13 is out of stock
+Goodsloader [0] is informed by DepartmentSalesman [0] of department [1] to restock item13
+Goodsloader [0] is in the StockRoom and got item13
+Goodsloader [0] restocked item13 in Department [1]
+Goodsloader [0] leaves StockRoom
+DepartmentSalesman [1] is informed by the Goodsloader [1] that item13 is restocked
+DepartmentSalesman [0] informs the waiting customers that item13 is restocked
+Goodsloader [0] is waiting for orders to restock
+Privileged Customer [1] has found item13 and placed [6] in the trolly
+Privileged Customer [1] has finished shopping and is looking for the Cashier
+Privileged Customer [1] chose Cashier [0] with line of length [0]
+Cashier [0] got [10] from trolly of Privileged Customer [1].
+Cashier [0] got [20] from trolly of Privileged Customer [1].
+Cashier [0] got [26] from trolly of Privileged Customer [1].
+Cashier [0] got [2] from trolly of Privileged Customer [1].
+Cashier [0] got [19] from trolly of Privileged Customer [1].
+Cashier [0] got [22] from trolly of Privileged Customer [1].
+Cashier [0] got [4] from trolly of Privileged Customer [1].
+Cashier [0] got [25] from trolly of Privileged Customer [1].
+Cashier [0] got [1] from trolly of Privileged Customer [1].
+Cashier [0] got [13] from trolly of Privileged Customer [1].
+Cashier [0] tells Privileged Customer [1] total cost is $[64].
+Cashier [0] asks Privileged Customer [1] to wait for Manager.
+Manager emptied Counter [0] drawer.
+Manager has total sale of $[113]
+Cashier 0 Status : 1
+Manager emptied Counter [1] drawer.
+Manager has total sale of $[113]
+Cashier 1 Status : 0
+Manager emptied Counter [2] drawer.
+Manager has total sale of $[113]
+Cashier 2 Status : 0
+Cashier [0] informs the Manager that Privileged Customer [1] does not have enough money.
+Privileged Customer [1] cannot pay $[64]
+Privileged Customer [1] is waiting for Manager for negotiations.
+Privileged Customer [1] pays $[64] to Manager after removing items and is waiting for receipt from Manager. 
+Manager removes [9] from the trolly of Privileged Customer [1].
+Manager removes [8] from the trolly of Privileged Customer [1].
+Manager gives receipt to Privileged Customer [1].
+Manager emptied Counter [0] drawer.
+Manager has total sale of $[161]
+Cashier 0 Status : 0
+Manager emptied Counter [1] drawer.
+Manager has total sale of $[161]
+Cashier 1 Status : 0
+Manager emptied Counter [2] drawer.
+Manager has total sale of $[161]
+Cashier 2 Status : 0
+Privileged Customer [1] got receipt from Manager and is now leaving.
+Privileged Customer [1] is leaving the trolley
+Customer1 exits the store
+Manager sends Cashier [0] on break.
+Cashier [0] is going on break.
+Manager emptied Counter [0] drawer.
+Manager has total sale of $[161]
+Cashier 0 Status : 2
+Manager emptied Counter [1] drawer.
+Manager has total sale of $[161]
+Cashier 1 Status : 0
+Manager emptied Counter [2] drawer.
+Manager has total sale of $[161]
+Cashier 2 Status : 0
+Total Sales from Counter [0] is $[113]
+Total Sales from Counter [1] is $[0]
+Total Sales from Counter [2] is $[0]
+Total Sales from Manager counter is $[48]
+Total Sale of the entire store is $[161]No threads ready or runnable, and no pending interrupts.
+Assuming the program completed.
+Machine halting!
+
+Ticks: total 470690, idle 0, system 470690, user 0
+Disk I/O: reads 0, writes 0
+Console I/O: reads 0, writes 0
+Paging: faults 0
+Network I/O: packets received 0, sent 0
+
+Cleaning up...
